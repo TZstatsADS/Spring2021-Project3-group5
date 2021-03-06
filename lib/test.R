@@ -9,3 +9,13 @@ test <- function(model, features, pred.type){
 
 # This function is not necessary.
 # We put it here just to show the structure.
+
+test_gbm <- function(model, input.test, n, pred.type){
+  
+  res <- predict(model,
+                newdata = input.test,
+                n.trees = n,
+                type = pred.type)
+  
+  return(res)
+}
