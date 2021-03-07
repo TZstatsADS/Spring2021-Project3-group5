@@ -2,7 +2,7 @@
 ### Construct features and responses for training images  ###
 #############################################################
 
-feature <- function(input_list = fiducial_pt_list, index, usepoly = FALSE){
+feature <- function(input_list = fiducial_pt_list, index, usepoly = FALSE, add_poly_to_dist = FALSE){
   
   ### Construct process features for training images 
   
@@ -82,7 +82,19 @@ feature <- function(input_list = fiducial_pt_list, index, usepoly = FALSE){
     return(Returnlist)
     
   }
+  ### Step 3: Apply function in Step 2 to selected index of input list, output: a feature matrix with ncol = n(n-1) = 78*77 = 6006
+  pairwise_dist_feature <- t(sapply(input_list[index], pairwise_dist_result))
+  dim(pairwise_dist_feature) 
   
+  ### Step 4: construct a dataframe containing features and label with nrow = length of index
+  ### column bind feature matrix in Step 3 and corresponding features
+  pairwise_data <- cbind(pairwise_dist_feature, info$label[index])
+  ### add column names
+  colnames(pairwise_data) <- c(paste("feature", 1:(ncol(pairwise_data)-1), sep = ""), "label")
+  ### convert matrix to data frame
+  pairwise_data <- as.data.frame(pairwise_data)
+  ### convert label column to factor
+  pairwise_data$label <- as.factor(pairwise_data$label)
   
   if(usepoly) {
     
@@ -94,7 +106,11 @@ feature <- function(input_list = fiducial_pt_list, index, usepoly = FALSE){
     
     mt1 <- matrix(unlist(ListofLists), nrow = length(index), byrow = TRUE)
     
-    mt1_data <- cbind(mt1, info$label[index])
+    if (add_poly_to_dist){
+      mt1_data <- cbind(mt1, pairwise_dist_feature, info$label[index])
+    } else {
+      mt1_data <- cbind(mt1, info$label[index]) 
+    }
     
     colnames(mt1_data) <- c(paste("feature", 1:(ncol(mt1_data)-1), sep = ""), "label")
     ### convert matrix to data frame
@@ -102,23 +118,9 @@ feature <- function(input_list = fiducial_pt_list, index, usepoly = FALSE){
     
     return(feature_df = curve_data)
     
-  } else {
-    ### Step 3: Apply function in Step 2 to selected index of input list, output: a feature matrix with ncol = n(n-1) = 78*77 = 6006
-    pairwise_dist_feature <- t(sapply(input_list[index], pairwise_dist_result))
-    dim(pairwise_dist_feature) 
-    
-    ### Step 4: construct a dataframe containing features and label with nrow = length of index
-    ### column bind feature matrix in Step 3 and corresponding features
-    pairwise_data <- cbind(pairwise_dist_feature, info$label[index])
-    ### add column names
-    colnames(pairwise_data) <- c(paste("feature", 1:(ncol(pairwise_data)-1), sep = ""), "label")
-    ### convert matrix to data frame
-    pairwise_data <- as.data.frame(pairwise_data)
-    ### convert label column to factor
-    pairwise_data$label <- as.factor(pairwise_data$label)
-    
-    return(feature_df = pairwise_data)
   }
+
+  return(feature_df = pairwise_data)
 }
 
 
