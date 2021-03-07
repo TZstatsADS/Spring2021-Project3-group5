@@ -88,19 +88,24 @@ In this chunk, we have a set of controls for the evaluation experiments.
 + (T/F) cross-validation on the training set
 + (T/F) reweighting the samples for training set 
 + (number) K, the number of CV folds
++ (number) gbm.numtrees, the number of trees to use in GBM baseline
 + (T/F) process features for training set
 + (T/F) run evaluation on an independent test set
 + (T/F) process features for test set
++ (T/F) return polynomial features matrix only
++ (T/F) add polynomial features to starter code features matrix
++ (T/F) run gbm baseline model
 
 ```{r exp_setup}
 run.cv <- FALSE # run cross-validation on the training set
 sample.reweight <- FALSE # run sample reweighting in model training
 K <- 5  # number of CV folds
-gbm.numtrees <- 200 #number of trees to use in gbm
+gbm.numtrees <- 1000 #number of trees to use in gbm
 run.feature.train <- TRUE # process features for training set
 run.test <- TRUE # run evaluation on an independent test set
 run.feature.test <- TRUE # process features for test set
 run.poly.feature <- TRUE # process poly features
+run.add.poly.feature <- TRUE # and poly features to dist matrix
 run.gbm <- TRUE
 ```
 
@@ -166,7 +171,7 @@ and the midpoint of the upper lip(52).  For example, the distance of an happy fa
 source("../lib/feature.R")
 tm_feature_train <- NA
 if(run.feature.train){
-  tm_feature_train <- system.time(dat_train<-feature(fiducial_pt_list,train_idx, run.poly.feature))
+  tm_feature_train <- system.time(dat_train<-feature(fiducial_pt_list,train_idx, run.poly.feature, run.add.poly.feature))
   save(dat_train, file="../output/feature_train.RData")
 }else{
   load(file="../output/feature_train.RData")
@@ -174,7 +179,7 @@ if(run.feature.train){
 
 tm_feature_test <- NA
 if(run.feature.test){
-  tm_feature_test <- system.time(dat_test <- feature(fiducial_pt_list, test_idx, run.poly.feature))
+  tm_feature_test <- system.time(dat_test <- feature(fiducial_pt_list, test_idx, run.poly.feature, run.add.poly.feature))
   save(dat_test, file="../output/feature_test.RData")
 }else{
   load(file="../output/feature_test.RData")
@@ -272,7 +277,7 @@ if (run.gbm){
   # plot the performance
   best.iter.oob <- gbm.perf(fit_train,method="OOB")  # returns out-of-bag estimated best number of trees
   print(best.iter.oob)
-  best.iter.cv <- gbm.perf(fit_train,method="cv")   # returns 5-fold cv estimate of best number of trees
+  best.iter.cv <- gbm.perf(fit_train,method="cv")   # returns K-fold cv estimate of best number of trees
   print(best.iter.cv)
 
 } else {
@@ -310,7 +315,7 @@ if(run.test){
 ## reweight the test data to represent a balanced label distribution
 if (run.gbm){
   accu <- mean(dat_test$label == label_pred)
-  cat("The accuracy of model: GBM baseline is", mean(dat_test$label == label_pred)*100, "%.\n")
+  cat("The accuracy of GBM baseline model is", mean(dat_test$label == label_pred)*100, "%.\n")
   
 } else {
   label_test <- as.integer(dat_test$label)
