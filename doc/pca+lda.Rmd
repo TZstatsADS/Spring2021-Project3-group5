@@ -1,0 +1,273 @@
+---
+title: "pca + lda model"
+author: "Zikun Zhuang"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+
+```{r message=FALSE}
+if(!require("EBImage")){
+  install.packages("BiocManager")
+  BiocManager::install("EBImage")
+}
+if(!require("R.matlab")){
+  install.packages("R.matlab")
+}
+if(!require("readxl")){
+  install.packages("readxl")
+}
+
+if(!require("dplyr")){
+  install.packages("dplyr")
+}
+if(!require("readxl")){
+  install.packages("readxl")
+}
+
+if(!require("ggplot2")){
+  install.packages("ggplot2")
+}
+
+if(!require("caret")){
+  install.packages("caret")
+}
+
+if(!require("glmnet")){
+  install.packages("glmnet")
+}
+
+if(!require("WeightedROC")){
+  install.packages("WeightedROC")
+}
+
+if(!require("MASS")){
+  install.packages("MASS")
+}
+
+install.packages('ROSE')
+
+library(R.matlab)
+library(readxl)
+library(dplyr)
+library(EBImage)
+library(ggplot2)
+library(caret)
+library(glmnet)
+library(WeightedROC)
+library(MASS)
+library(ROSE)
+
+```
+
+### Step 0 set work directories
+```{r wkdir, eval=FALSE}
+set.seed(2020)
+setwd('/Users/zy/Documents/GitHub/Spring2021-Project3-group-5/doc')
+# here replace it with your own path or manually set it in RStudio to where this rmd file is located. 
+# use relative path for reproducibility
+```
+
+Provide directories for training images. Training images and Training fiducial points will be in different subfolders. 
+```{r}
+train_dir <- "../data/train_set/" # This will be modified for different data sets.
+train_image_dir <- paste(train_dir, "images/", sep="")
+train_pt_dir <- paste(train_dir,  "points/", sep="")
+train_label_path <- paste(train_dir, "label.csv", sep="") 
+```
+
+### Step 1: set up controls for evaluation experiments.
+
+In this chunk, we have a set of controls for the evaluation experiments. 
+
++ (T/F) cross-validation on the training set
++ (T/F) reweighting the samples for training set 
++ (number) K, the number of CV folds
++ (T/F) process features for training set
++ (T/F) run evaluation on an independent test set
++ (T/F) process features for test set
+
+```{r exp_setup}
+run.cv <- TRUE # run cross-validation on the training set
+sample.reweight <- TRUE # run sample reweighting in model training
+K <- 5  # number of CV folds
+run.feature.train <- TRUE # process features for training set
+run.test <- TRUE # run evaluation on an independent test set
+run.feature.test <- TRUE # process features for test set
+```
+
+
+### Step 2: import data and train-test split 
+```{r}
+#train-test split
+info <- read.csv(train_label_path)
+n <- nrow(info)
+n_train <- round(n*(4/5), 0)
+train_idx <- sample(info$Index, n_train, replace = F)
+test_idx <- setdiff(info$Index, train_idx)
+
+```
+
+If you choose to extract features from images, such as using Gabor filter, R memory will exhaust all images are read together. The solution is to repeat reading a smaller batch(e.g 100) and process them. 
+```{r}
+n_files <- length(list.files(train_image_dir))
+
+image_list <- list()
+for(i in 1:100){
+   image_list[[i]] <- readImage(paste0(train_image_dir, sprintf("%04d", i), ".jpg"))
+}
+```
+
+Fiducial points are stored in matlab format. In this step, we read them and store them in a list.
+```{r read fiducial points}
+#function to read fiducial points
+#input: index
+#output: matrix of fiducial points corresponding to the index
+readMat.matrix <- function(index){
+     return(round(readMat(paste0(train_pt_dir, sprintf("%04d", index), ".mat"))[[1]],0))
+}
+
+#load fiducial points
+fiducial_pt_list <- lapply(1:n_files, readMat.matrix)
+save(fiducial_pt_list, file="../output/fiducial_pt_list.RData")
+```
+
+### Step 3: construct features and responses
+
++ The follow plots show how pairwise distance between fiducial points can work as feature for facial emotion recognition.
+
+  + In the first column, 78 fiducials points of each emotion are marked in order. 
+  + In the second column distributions of vertical distance between right pupil(1) and  right brow peak(21) are shown in  histograms. For example, the distance of an angry face tends to be shorter than that of a surprised face.
+  + The third column is the distributions of vertical distances between right mouth corner(50)
+and the midpoint of the upper lip(52).  For example, the distance of an happy face tends to be shorter than that of a sad face.
+
+![Figure1](../figs/feature_visualization.jpg)
+
+`feature.R` should be the wrapper for all your feature engineering functions and options. The function `feature( )` should have options that correspond to different scenarios for your project and produces an R object that contains features and responses that are required by all the models you are going to evaluate later. 
+  
+  + `feature.R`
+  + Input: list of images or fiducial point
+  + Output: an RData file that contains extracted features and corresponding responses
+
+```{r feature}
+source("../lib/feature.R")
+tm_feature_train <- NA
+if(run.feature.train){
+  tm_feature_train <- system.time(dat_train <- feature(fiducial_pt_list, train_idx))
+  save(dat_train, file="../output/feature_train.RData")
+}else{
+  load(file="../output/feature_train.RData")
+}
+
+tm_feature_test <- NA
+if(run.feature.test){
+  tm_feature_test <- system.time(dat_test <- feature(fiducial_pt_list, test_idx))
+  save(dat_test, file="../output/feature_test.RData")
+}else{
+  load(file="../output/feature_test.RData")
+}
+
+#rebalance the training data
+balanced_train_data <- ROSE(label~.,data = dat_train)$data
+save(balanced_train_data, file="../output/feature_balanced_train.RData")
+```
+
+### Step 4: Train a classification model with training features and responses
+Since there are over 6000 features, we implement the PCA method to reduce dimension according to the covariance matrix. We only retain PCs with large variance.
+
+```{r pca lda}
+#separate the features from label
+dat_train_new <- balanced_train_data[,-dim(balanced_train_data)[2]]
+dat_test_new <- dat_test[,-dim(dat_test)[2]]
+#create a vector contain target number of PCs
+num.pca <- c(10,50,500,1000)
+
+train_pca <- function(num.pca){
+  for(i in 1:length(num.pca)){
+    #start time for training the model
+    train.model.start = proc.time()
+    #run PCA
+    pca <- prcomp(dat_train_new)
+    #store for each potential PC
+    train_pca <- data.frame(pca$x[,1:num.pca[i]], label = balanced_train_data[dim(balanced_train_data)[2]])
+    pred_pca <- predict(pca,dat_test_new)
+    test_pca <- data.frame(pred_pca[,1:num.pca[i]], label = dat_test[dim(dat_test)[2]])
+    #fitting the lda model 
+    lda_pca <- lda(label ~ ., data = train_pca) 
+    #stop time for training the model
+    train.model.end = proc.time()
+    #start time for testing the model
+    test.model.start = proc.time()
+    #predict lda model
+    lda_pred_pca = predict(lda_pca,test_pca[-dim(test_pca)[2]])
+    #end time for testing the model
+    test.model.end = proc.time()
+    #test accuracy
+    test_accuracy=confusionMatrix(lda_pred_pca$class, test_pca$label)$overall[1]
+    print(list(l1=train.model.end - train.model.start,
+               l2=test.model.end - test.model.start,
+               l3=test_accuracy))
+    }
+  }
+train_pca(num.pca)
+```
+
+By comparing the training time, test time and accuracy, we use model with 50 PCs.
+
+```{r}
+pca_10 <- prcomp(dat_train_new)
+train_pca_10 <- data.frame(pca_10$x[,1:50], label = balanced_train_data[dim(balanced_train_data)[2]])
+pred_pca_10 <- predict(pca_10,dat_test_new)
+test_pca_10 <- data.frame(pred_pca_10[,1:50], label = dat_test[dim(dat_test)[2]])
+
+save(train_pca_10, file="../output/feature_pca_train.RData")
+save(test_pca_10, file="../output/feature_pca_test.RData")
+
+tm_train = NA
+tm_train <- system.time(lda_pca_10 <- lda(label ~ ., data = train_pca_10,cv = TRUE))
+
+```
+
+Calculate the training and testing accuracy of LDA model
+```{r}
+pred_train_lda <- predict(lda_pca_10, train_pca_10[-dim(train_pca_10)[2]])
+accu_train_lda <- mean(pred_train_lda$class == train_pca_10$label)
+cat("The trainig accuracy of model: LDA", "is", accu_train_lda*100, "%.\n")
+
+tm_test = NA
+if(run.test){
+  tm_test <- system.time(pred_test_lda <- predict(lda_pca_10, test_pca_10))
+}
+
+save(pred_test_lda, file="../output/fit_train.RData")
+
+accu_test_lda <- mean(pred_test_lda$class == test_pca_10$label)
+cat("The accuracy of model: LDA", "is", accu_test_lda*100, "%.\n")
+
+```
+
+### Summarize Running Time
+Prediction performance matters, so does the running times for constructing features and for training the model, especially when the computation resource is limited. 
+```{r running_time}
+cat("Time for constructing training features=", tm_feature_train[1], "s \n")
+cat("Time for constructing testing features=", tm_feature_test[1], "s \n")
+cat("Time for training model=", tm_train[1], "s \n") 
+cat("Time for testing model=", tm_test[1], "s \n")
+```
+
+###Reference
+- Du, S., Tao, Y., & Martinez, A. M. (2014). Compound facial expressions of emotion. Proceedings of the National Academy of Sciences, 111(15), E1454-E1462.
+
+
+
+
+
+
+
+
+
+
+
+
+
