@@ -138,7 +138,7 @@ K <- 5  # number of CV folds
 run.feature.train <- F # process features for training set
 run.test <- TRUE # run evaluation on an independent test set
 run.feature.test <- TRUE # process features for test set
-run.balanced.data <- F
+run.balanced.data <- TRUE
 train.random.forest <- F
 ```
 
