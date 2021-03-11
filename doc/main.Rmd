@@ -138,8 +138,9 @@ K <- 5  # number of CV folds
 run.feature.train <- F # process features for training set
 run.test <- TRUE # run evaluation on an independent test set
 run.feature.test <- TRUE # process features for test set
-run.balanced.data <- TRUE
-train.random.forest <- F
+run.balanced.data <- TRUE # Whether or not balance the data
+train.random.forest <- F # Train Random Forest Model
+tune.random.forest <- F # Tune Random Forest Model
 ```
 
 Using cross-validation or independent test set evaluation, we compare the performance of models with different specifications. In this Starter Code, we tune parameter lambda (the amount of shrinkage) for logistic regression with LASSO penalty.
@@ -350,7 +351,7 @@ Random Forest:
 ## Tune RF
 ```{r}
 source("../lib/random_forest.R")
-if(run.cv){
+if(tune.random.forest){
 time.rf.tune <- system.time(rf.tune <- random_forest_tune(dat_train_balanced_rose))
 save(rf.tune, file="../output/rf_tune.RData")
 }else(
@@ -365,13 +366,13 @@ mtry = 154 is the best.
 source("../lib/random_forest.R")
 
 #Train 500
-if(run.cv){
+if(tune.random.forest){
 time.rf.train <- system.time(random_forest_fit_500 <- random_forest_train_500(dat_train_balanced_rose,mtry = 154))
 save(random_forest_fit_500, file = "../output/rf_train_500_trees.RData")
 }
 #Test 500
 random_forest_test_prep=NA
-if(run.cv){
+if(tune.random.forest){
  load(file="../output/rf_train_500_trees.RData")
  time.rf.test <- system.time(
    random_forest_test_prep <- random_forest_test(
@@ -398,13 +399,13 @@ cat("Time for testing model Random Forest = ",time.rf.test[1], "s \n")
 # Time for testing model Random Forest =  0.09 s 
 
 #Train 1000
-if(run.cv){
+if(tune.random.forest){
 time.rf.train <- system.time(random_forest_fit_1000 <- random_forest_train_1000(dat_train_balanced_rose,mtry = 154))
 save(random_forest_fit_1000, file = "../output/rf_train_1000_trees.RData")
 }
 #Test 1000
 random_forest_test_prep=NA
-if(run.cv){
+if(tune.random.forest){
  load(file="../output/rf_train_1000_trees.RData")
  time.rf.test <- system.time(
    random_forest_test_prep <- random_forest_test(
@@ -426,13 +427,13 @@ cat("Time for testing model Random Forest = ",time.rf.test[1], "s \n")
 }
 
 #Train 1500
-if(run.cv){
+if(tune.random.forest){
 time.rf.train <- system.time(random_forest_fit_1500 <- random_forest_train_1500(dat_train_balanced_rose,mtry = 154))
 save(random_forest_fit_1500, file = "../output/rf_train_1500_trees.RData")
 }
 #Test 1500
 random_forest_test_prep=NA
-if(run.cv){
+if(tune.random.forest){
  load(file="../output/rf_train_1500_trees.RData")
  time.rf.test <- system.time(
    random_forest_test_prep <- random_forest_test(
@@ -454,13 +455,13 @@ cat("Time for testing model Random Forest = ",time.rf.test[1], "s \n")
 }
 
 #Train 2000
-if(run.cv){
+if(tune.random.forest){
 time.rf.train <- system.time(random_forest_fit_2000 <- random_forest_train_2000(dat_train_balanced_rose,mtry = 154))
 save(random_forest_fit_2000, file = "../output/rf_train_2000_trees.RData")
 }
 #Test 2000
 random_forest_test_prep=NA
-if(run.cv){
+if(tune.random.forest){
  load(file="../output/rf_train_2000_trees.RData")
  time.rf.test <- system.time(
    random_forest_test_prep <- random_forest_test(
@@ -481,13 +482,13 @@ cat("Time for training model Random Forest = ", time.rf.train[1], "s \n")
 cat("Time for testing model Random Forest = ",time.rf.test[1], "s \n")
 }
 #Train 2500
-if(run.cv){
+if(tune.random.forest){
 time.rf.train <- system.time(random_forest_fit_2500 <- random_forest_train_2500(dat_train_balanced_rose,mtry = 154))
 save(random_forest_fit_2500, file = "../output/rf_train_2500_trees.RData")
 }
 #Test 2500
 random_forest_test_prep=NA
-if(run.cv){
+if(tune.random.forest){
  load(file="../output/rf_train_2500_trees.RData")
  time.rf.test <- system.time(
    random_forest_test_prep <- random_forest_test(
