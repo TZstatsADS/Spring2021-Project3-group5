@@ -147,18 +147,25 @@ In this chunk, we have a set of controls for the evaluation experiments.
 + (T/F) run gbm baseline model
 
 ```{r exp_setup}
-run.cv <- FALSE # run cross-validation on the training set
+run.cv <- TRUE # run cross-validation on the training set
 sample.reweight <- FALSE # run sample reweighting in model training
 K <- 5  # number of CV folds
-gbm.numtrees <- 1000 #number of trees to use in gbm
 run.feature.train <- TRUE # process features for training set
 run.test <- TRUE # run evaluation on an independent test set
+
+# gbm
+gbm.numtrees <- 1000 #number of trees to use in gbm
 run.feature.test <- TRUE # process features for test set
 run.poly.feature <- TRUE # process poly features
 run.add.poly.feature <- TRUE # and poly features to dist matrix
 run.gbm <- TRUE
+
+# svm
+run.svm <- TRUE # svm is the chosen advance model
 needs.balanced <- TRUE # balance data for model fitting
 model.selection <- TRUE # perform model selection on svm models
+
+# random forest
 run.balanced.data <- TRUE # Whether or not balance the data
 train.random.forest <- F # Train Random Forest Model
 tune.random.forest <- F # Tune Random Forest Model
@@ -664,13 +671,16 @@ Prediction performance matters, so does the running times for constructing featu
 
 ```{r}
 library(ROSE)
-tm_svm_rebalanced_train <- NA
-if(needs.balanced){
-  tm_svm_rebalanced_train <- system.time(svm_training_data <- ROSE(label ~ ., data = dat_train)$data)
-  save(svm_training_data, file="../output/svm_training_data.RData")
-} else {
-  load(file="../output/svm_training_data.RData")
+if(run.svm){
+  tm_svm_rebalanced_train <- NA
+  if(needs.balanced){
+    tm_svm_rebalanced_train <- system.time(svm_training_data <- ROSE(label ~ ., data = dat_train)$data)
+    save(svm_training_data, file="../output/svm_training_data.RData")
+  } else {
+    load(file="../output/svm_training_data.RData")
+  }
 }
+
 ```
 
 
@@ -749,8 +759,8 @@ cat("The AUC of svm model is", svm_auc, ".\n")
 ```{r}
 cat("Time for rebalancing training data =", tm_svm_rebalanced_train[1], "s \n")
 cat("Time for rebalancing testing data =", tm_svm_rebalanced_test[1], "s \n")
-cat("Time for training model =", tm_svm_linear_mod[1], "s \n")
-cat("Time for testing model=", tm_svm_test[1], "s \n")
+cat("Time for training svm model =", tm_svm_linear_mod[1], "s \n")
+cat("Time for testing svm model=", tm_svm_test[1], "s \n")
 ```
 
 
