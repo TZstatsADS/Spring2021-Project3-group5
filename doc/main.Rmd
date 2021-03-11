@@ -2,8 +2,10 @@
 title: "Main"
 author: "Chengliang Tang, Yujie Wang, Diane Lu, Tian Zheng"
 output:
-  pdf_document: default
+  html_document:
+    df_print: paged
   html_notebook: default
+  pdf_document: default
 ---
 
 In your final repo, there should be an R markdown file that organizes **all computational steps** for evaluating your proposed Facial Expression Recognition framework. 
@@ -12,8 +14,8 @@ This file is currently a template for running evaluation experiments. You should
 
 ```{r message=FALSE}
 if(!require("EBImage")){
-  install.packages("BiocManager")
-  BiocManager::install("EBImage")
+ install.packages("BiocManager")
+ BiocManager::install("EBImage")
 }
 if(!require("R.matlab")){
   install.packages("R.matlab")
@@ -48,7 +50,7 @@ if(!require("WeightedROC")){
 library(R.matlab)
 library(readxl)
 library(dplyr)
-library(EBImage)
+#library(EBImage)
 library(ggplot2)
 library(caret)
 library(glmnet)
@@ -85,10 +87,13 @@ In this chunk, we have a set of controls for the evaluation experiments.
 ```{r exp_setup}
 run.cv <- TRUE # run cross-validation on the training set
 sample.reweight <- TRUE # run sample reweighting in model training
-K <- 5  # number of CV folds
+K <- 2  # number of CV folds
 run.feature.train <- TRUE # process features for training set
 run.test <- TRUE # run evaluation on an independent test set
 run.feature.test <- TRUE # process features for test set
+
+needs.balanced <- TRUE # balance data for model fitting
+model.selection <- TRUE # perform model selection on svm models
 ```
 
 Using cross-validation or independent test set evaluation, we compare the performance of models with different specifications. In this Starter Code, we tune parameter lambda (the amount of shrinkage) for logistic regression with LASSO penalty.
@@ -112,10 +117,10 @@ If you choose to extract features from images, such as using Gabor filter, R mem
 ```{r}
 n_files <- length(list.files(train_image_dir))
 
-image_list <- list()
-for(i in 1:100){
-   image_list[[i]] <- readImage(paste0(train_image_dir, sprintf("%04d", i), ".jpg"))
-}
+# image_list <- list()
+# for(i in 1:100){
+#    image_list[[i]] <- readImage(paste0(train_image_dir, sprintf("%04d", i), ".jpg"))
+# }
 ```
 
 Fiducial points are stored in matlab format. In this step, we read them and store them in a list.
@@ -166,8 +171,6 @@ if(run.feature.test){
 }else{
   load(file="../output/feature_test.RData")
 }
-
-
 ```
 
 ### Step 4: Train a classification model with training features and responses
@@ -258,6 +261,8 @@ if (sample.reweight){
 save(fit_train, file="../output/fit_train.RData")
 ```
 
+
+
 ### Step 5: Run test on test images
 ```{r test}
 tm_test = NA
@@ -286,8 +291,6 @@ auc <- WeightedAUC(tpr.fpr)
 
 cat("The accuracy of model:", model_labels[which.min(res_cv$mean_error)], "is", accu*100, "%.\n")
 cat("The AUC of model:", model_labels[which.min(res_cv$mean_error)], "is", auc, ".\n")
-
-
 ```
 
 ### Summarize Running Time
@@ -299,18 +302,102 @@ cat("Time for training model=", tm_train[1], "s \n")
 cat("Time for testing model=", tm_test[1], "s \n")
 ```
 
+
+### SVM Model
+
+* Balance the Training Data
+
+```{r}
+library(ROSE)
+tm_svm_rebalanced_train <- NA
+if(needs.balanced){
+  tm_svm_rebalanced_train <- system.time(svm_training_data <- ROSE(label ~ ., data = dat_train)$data)
+  save(svm_training_data, file="../output/svm_training_data.RData")
+} else {
+  load(file="../output/svm_training_data.RData")
+}
+```
+
+
+* Model Selection
+
+```{r}
+library(e1071)
+tm_svm_default_mod <- NA
+tm_svm_linear_cost <-NA
+tm_svm_linear_mod <- NA
+if(model.selection){
+  svm_model_auc <- rep(NA, 2)
+  # default model
+  if(run.cv){
+    tm_svm_default_mod < system.time(svm_default_mod <- svm_default_train(svm_training_data, K))
+    save(svm_default_mod, file="../output/svm_default_mod.RData")
+  } else {
+    load(file="../output/svm_default_mod.RData")
+  }
+  svm_default_pred <- svm_test(svm_default_mod, svm_training_data)
+  #mean(round(svm_default_pred == svm_training_data$label))
+  tpr.fpr_default <- WeightedROC(as.numeric(svm_default_pred), svm_training_data$label)
+  svm_model_auc[1] <- WeightedAUC(tpr.fpr_default)
+  
+  
+  # linear kernel
+  if(run.cv){
+    tm_svm_linear_cost < system.time(best.cost <- svm.cv.linear(svm_training_data, K))
+    tm_svm_linear_mod <- system.time(svm_linear_mod <- svm_linear_train(svm_training_data, best.cost, K))
+    save(svm_linear_mod, file="../output/svm_linear_mod.RData")
+  } else {
+    load(file="../output/svm_linear_mod.RData")
+  }
+  svm_linear_pred <- svm_test(svm_linear_mod, svm_training_data)
+  #mean(round(svm_linear_pred == svm_training_data$label))
+  tpr.fpr_linear <- WeightedROC(as.numeric(svm_linear_pred), svm_training_data$label)
+  svm_model_auc[2] <- WeightedAUC(tpr.fpr_linear)
+  
+  
+  # select model with the highest auc
+  curr_best_auc <- which.max(svm_model_auc)
+  if(curr_best_auc == 1){
+    svm_best_mod <- svm_default_mod
+    save(svm_best_mod, file="../output/svm_best_mod.RData")
+  } else{
+    svm_best_mod <- svm_linear_mod
+    save(svm_best_mod, file="../output/svm_best_mod.RData")
+  }
+} else{
+  load(file="../output/svm_best_mod.RData")
+}
+```
+
+* Evaluation on Testing Data
+
+```{r}
+tm_svm_rebalanced_test <- NA
+if(needs.balanced){
+  tm_svm_rebalanced_test <- system.time(svm_testing_data <- ROSE(label ~ ., data = dat_test)$data)
+  save(svm_testing_data, file="../output/svm_testing_data.RData")
+} else {
+  load(file="../output/svm_testing_data.RData")
+}
+tm_svm_test <- system.time(svm_pred <- svm_test(svm_linear_mod, svm_testing_data))
+
+svm_accu = mean(round(svm_pred == svm_testing_data$label))
+tpr.fpr <- WeightedROC(as.numeric(svm_pred), svm_testing_data$label)
+svm_auc = WeightedAUC(tpr.fpr)
+
+cat("The accuracy of svm model is", svm_accu*100, "%.\n")
+cat("The AUC of svm model is", svm_auc, ".\n")
+```
+
+* Summarize Running Time
+
+```{r}
+cat("Time for rebalancing training data =", tm_svm_rebalanced_train[1], "s \n")
+cat("Time for rebalancing testing data =", tm_svm_rebalanced_test[1], "s \n")
+cat("Time for training model =", tm_svm_linear_mod[1], "s \n")
+cat("Time for testing model=", tm_svm_test[1], "s \n")
+```
+
+
 ###Reference
 - Du, S., Tao, Y., & Martinez, A. M. (2014). Compound facial expressions of emotion. Proceedings of the National Academy of Sciences, 111(15), E1454-E1462.
-
-
-
-
-
-
-
-
-
-
-
-
-
