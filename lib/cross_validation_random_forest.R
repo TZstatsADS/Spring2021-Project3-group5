@@ -49,3 +49,23 @@ cv.function.rf <- function(features, labels, K, l, reweight = FALSE){
   }
   return(c(mean(cv.error),sd(cv.error), mean(cv.AUC), sd(cv.AUC)))
 }
+
+
+### SVM
+
+# linear kernel
+svm.cv.linear <- function(training_data, cv){
+  costs <- c(0.001, 0.01)
+  svm_models <- rep(NA, length(costs))
+  svm_auc <- rep(NA, length(costs))
+  for(i in 1:length(costs)){
+    curr_cost <- costs[i]
+    curr_mod <- svm_linear_train(svm_training_data, curr_cost, 0)
+    svm_pred <- svm_test(curr_mod, svm_training_data)
+    tpr.fpr <- WeightedROC(as.numeric(svm_pred), svm_training_data$label)
+    svm_auc[i] = WeightedAUC(tpr.fpr)
+  }
+  curr_best_index <- which.max(svm_auc)
+  curr_best_cost <- costs[curr_best_index]
+  return(curr_best_cost)
+}
