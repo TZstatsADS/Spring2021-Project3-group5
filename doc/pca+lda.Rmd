@@ -89,7 +89,7 @@ In this chunk, we have a set of controls for the evaluation experiments.
 + (T/F) process features for test set
 
 ```{r exp_setup}
-run.cv <- TRUE # run cross-validation on the training set
+run.lda <- TRUE # run cross-validation on the training set
 sample.reweight <- TRUE # run sample reweighting in model training
 K <- 5  # number of CV folds
 run.feature.train <- TRUE # process features for training set
@@ -168,9 +168,11 @@ if(run.feature.test){
   load(file="../output/feature_test.RData")
 }
 
-#rebalance the training data
+#rebalance the train and test data
 balanced_train_data <- ROSE(label~.,data = dat_train)$data
 save(balanced_train_data, file="../output/feature_balanced_train.RData")
+balanced_test_data <- ROSE(label~.,data = dat_test)$data
+save(balanced_test_data, file="../output/feature_balanced_train.RData")
 ```
 
 ### Step 4: Train a classification model with training features and responses
@@ -179,7 +181,7 @@ Since there are over 6000 features, we implement the PCA method to reduce dimens
 ```{r pca lda}
 #separate the features from label
 dat_train_new <- balanced_train_data[,-dim(balanced_train_data)[2]]
-dat_test_new <- dat_test[,-dim(dat_test)[2]]
+dat_test_new <- balanced_test_data[,-dim(balanced_test_data)[2]]
 #create a vector contain target number of PCs
 num.pca <- c(10,50,500,1000)
 
@@ -192,8 +194,8 @@ train_pca <- function(num.pca){
     #store for each potential PC
     train_pca <- data.frame(pca$x[,1:num.pca[i]], label = balanced_train_data[dim(balanced_train_data)[2]])
     pred_pca <- predict(pca,dat_test_new)
-    test_pca <- data.frame(pred_pca[,1:num.pca[i]], label = dat_test[dim(dat_test)[2]])
-    #fitting the lda model 
+    test_pca <- data.frame(pred_pca[,1:num.pca[i]], label = balanced_test_data[dim(balanced_test_data)[2]])
+    #fitting the lda model
     lda_pca <- lda(label ~ ., data = train_pca) 
     #stop time for training the model
     train.model.end = proc.time()
@@ -215,17 +217,18 @@ train_pca(num.pca)
 
 By comparing the training time, test time and accuracy, we use model with 50 PCs.
 
-```{r}
+```{r final model}
 pca_10 <- prcomp(dat_train_new)
 train_pca_10 <- data.frame(pca_10$x[,1:50], label = balanced_train_data[dim(balanced_train_data)[2]])
 pred_pca_10 <- predict(pca_10,dat_test_new)
-test_pca_10 <- data.frame(pred_pca_10[,1:50], label = dat_test[dim(dat_test)[2]])
+test_pca_10 <- data.frame(pred_pca_10[,1:50], label = balanced_test_data[dim(balanced_test_data)[2]])
 
 save(train_pca_10, file="../output/feature_pca_train.RData")
 save(test_pca_10, file="../output/feature_pca_test.RData")
 
+#calculate the training time
 tm_train = NA
-tm_train <- system.time(lda_pca_10 <- lda(label ~ ., data = train_pca_10,cv = TRUE))
+tm_train <- system.time(lda_pca_10 <- lda(label ~ ., data = train_pca_10, cv = TRUE))
 
 ```
 
@@ -235,6 +238,7 @@ pred_train_lda <- predict(lda_pca_10, train_pca_10[-dim(train_pca_10)[2]])
 accu_train_lda <- mean(pred_train_lda$class == train_pca_10$label)
 cat("The trainig accuracy of model: LDA", "is", accu_train_lda*100, "%.\n")
 
+#calculating the test time
 tm_test = NA
 if(run.test){
   tm_test <- system.time(pred_test_lda <- predict(lda_pca_10, test_pca_10))
@@ -244,6 +248,9 @@ save(pred_test_lda, file="../output/fit_train.RData")
 
 accu_test_lda <- mean(pred_test_lda$class == test_pca_10$label)
 cat("The accuracy of model: LDA", "is", accu_test_lda*100, "%.\n")
+tpr.fpr <- WeightedROC(as.numeric(pred_test_lda$class), test_pca_10$label)
+lda_auc = WeightedAUC(tpr.fpr)
+cat("The AUC of model: LDA is", lda_auc, ".\n")
 
 ```
 
