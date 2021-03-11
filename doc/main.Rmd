@@ -330,6 +330,7 @@ label_test <- as.integer(dat_test$label)
 weight_test <- rep(NA, length(label_test))
 for (i in unique(label_test)){
   weight_test[label_test == i] = 0.5 * length(label_test) / length(label_test[label_test == i])
+}
 # training weights
 weight_train <- rep(NA, length(label_train))
 for (v in unique(label_train)){
@@ -603,6 +604,7 @@ if(run.test){
    random_forest_test_prep <- random_forest_test(
      model = random_forest_fit,testset = dat_test)
                )
+}
 ## reweight the test data to represent a balanced label distribution
 if (run.gbm){
   accu <- mean(dat_test$label == label_pred)
