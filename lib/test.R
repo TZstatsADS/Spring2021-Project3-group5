@@ -11,11 +11,10 @@ test <- function(model, features, pred.type){
 ## SVM
 svm_test = function(svm_model, testing_data, model_selection=FALSE){
   if(model_selection) {
-    pred_svm = predict(object = svm_model, newdata = testing_data[-ncol(testing_data)], probability = FALSE)
+    pred_svm = predict(object = svm_model, newdata = testing_data[-ncol(testing_data)])
   } else {
-    pred_svm = predict(object = svm_model, newdata = testing_data, probability = FALSE)
+    pred_svm = predict(object = svm_model, newdata = testing_data)
   }
-  
   return(pred_svm)
 }
 
