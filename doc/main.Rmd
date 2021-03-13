@@ -56,34 +56,26 @@ if(!require("DMwR")){
   install.packages("DMwR")
 }
 
-library(R.matlab)
-library(readxl)
-library(dplyr)
-#library(EBImage)
-library(ggplot2)
-library(caret)
-library(glmnet)
-library(WeightedROC)
-library(gbm)
-library(DMwR)
-```
-New libraries
-```{r message=FALSE}
 if(!require("randomForest")){
  install.packages("randomForest")
 }
+
 if(!require("xgboost")){
  install.packages("xgboost")
 }
+
 if(!require("tibble")){
  install.packages("tibble")
 }
+
 if(!require("ROSE")){
  install.packages("ROSE")
 }
+
 if(!require("ggplot2")){
  install.packages("ggplot2")
 }
+
 if(!require("tidyverse")){
  install.packages("tidyverse")
 }
@@ -91,15 +83,29 @@ if(!require("tidyverse")){
 if(!require("AUC")){
  install.packages("AUC")
 }
+
 if(!require("e1071")){
  install.packages("e1071")
 }
+
 if(!require("OpenImageR")){
  install.packages("OpenImageR")
 }
+
 if(!require("caTools")){
   install.packages("caTools")
 }
+
+library(R.matlab)
+library(readxl)
+library(dplyr)
+library(EBImage)
+library(ggplot2)
+library(caret)
+library(glmnet)
+library(WeightedROC)
+library(gbm)
+library(DMwR)
 library(OpenImageR)
 library(AUC)
 library(e1071)
@@ -113,6 +119,8 @@ library(AUC)
 library(e1071)
 library(caTools)
 ```
+
+
 
 
 ### Step 0 set work directories
