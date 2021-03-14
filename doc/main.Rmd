@@ -2,10 +2,10 @@
 title: "Project 3: Facial Expression Predictive Modeling"
 author: "Jingbin Cao, Chuanchuan Liu, Dennis Shpits, Yingyao Wu, Zikun Zhuang"
 output:
+  pdf_document: default
+  html_notebook: default
   html_document:
     df_print: paged
-  html_notebook: default
-  pdf_document: default
 ---
 
 ```{r message=FALSE}
@@ -104,6 +104,7 @@ set.seed(2020)
 ```
 
 Provide directories for training images. Training images and Training fiducial points will be in different subfolders. 
+
 ```{r}
 train_dir <- "../data/train_set/" # This will be modified for different data sets.
 train_image_dir <- paste(train_dir, "images/", sep="")
@@ -128,7 +129,6 @@ In this chunk, we have a set of controls for the evaluation experiments.
 + (T/F) add polynomial features to starter code features matrix
 
 + (T/F) run svm model
-+ (T/F) rebalance training set
 + (T/F) perform model selection over a list of svm models
 + (T/F) run evaluation on the test set
 
@@ -162,12 +162,11 @@ run.add.poly.feature <- TRUE # and poly features to dist matrix
 
 # svm
 run.svm <- FALSE # svm is the chosen advanced model
-needs.balanced <- TRUE # balance data for model fitting
 model.selection <- TRUE # perform model selection on svm models
 run.svm.test <- TRUE # evaluate performance on the test set
 
 # random forest
-run.rf < FALSE # random forest is the chosen advanced model
+run.rf <- FALSE # random forest is the chosen advanced model
 run.balanced.data <- TRUE # whether or not balance the data
 train.random.forest <- FALSE # train Random Forest Model
 tune.random.forest <- FALSE # tune Random Forest Model
@@ -197,6 +196,7 @@ test_idx <- setdiff(info$Index, train_idx) # get indexes not used for training
 ```
 
 Fiducial points are stored in matlab format. In this step, we read them and store them in a list.
+
 ```{r read fiducial points}
 #function to read fiducial points
 #input: index
@@ -247,7 +247,7 @@ if(run.feature.test){
 }
 ```
 
-### Step 4: Train classification models with training features and responses and Run test on test images
+### Step 4: train classification models with training features and responses; run test on test images
 
 Call the train model and test model from library. 
 
@@ -268,41 +268,20 @@ source("../lib/train.R")
 source("../lib/test.R")
 ```
 
-#### Model selection with cross-validation
+### Baseline Model
 
-* Do model selection by choosing among different values of training model parameters.
 
-```{r runcv}
-source("../lib/cross_validation.R")
-feature_train = as.matrix(dat_train[, 1:ncol(dat_train)-1])
-label_train = as.integer(dat_train$label)
-if(run.cv){
-  res_cv <- matrix(0, nrow = length(lmbd), ncol = 4)
-  for(i in 1:length(lmbd)){
-    cat("lambda = ", lmbd[i], "\n")
-    res_cv[i,] <- cv.function(features = feature_train, labels = label_train, K, 
-                              l = lmbd[i], reweight = sample.reweight)
-  save(res_cv, file="../output/res_cv.RData")
-  }
-}else{
-  load("../output/res_cv.RData")
-}
-```
+--------THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL.----------
 
-Create weight test
+
+
+
+
+### Advanced Model 1: Improved GBM Model
+
+* Model Training
 
 ```{r}
-label_test <- as.integer(dat_test$label)
-weight_test <- rep(NA, length(label_test))
-for (i in unique(label_test)){
-  weight_test[label_test == i] = 0.5 * length(label_test) / length(label_test[label_test == i])
-}
-# training weights
-weight_train <- rep(NA, length(label_train))
-for (v in unique(label_train)){
-  weight_train[label_train == v] = 0.5 * length(label_train) / length(label_train[label_train == v])
-}
-
 if (run.gbm){
   if (sample.reweight){
     tm_train <- system.time(fit_train <- train_gbm(dat_train, s=0.1, K=K, n=gbm.numtrees,w = weight_train))
@@ -315,26 +294,20 @@ if (run.gbm){
   print(best.iter.oob)
   best.iter.cv <- gbm.perf(fit_train,method="cv")   # returns K-fold cv estimate of best number of trees
   print(best.iter.cv)
-
-} else {
-  if (sample.reweight){
-    tm_train <- system.time(fit_train <- train(feature_train, label_train, w = weight_train, par_best))
-  } else {
-    tm_train <- system.time(fit_train <- train(feature_train, label_train, w = NULL, par_best))
-  }
+  
+  save(fit_train, file="../output/fit_train.RData")
 }
-save(fit_train, file="../output/fit_train.RData")
+
 ```
 
+* Evaluation on Test Set
 
-
-### Step 5: Run test on test images
-```{r test}
-tm_test = NA
-feature_test <- as.matrix(dat_test[, 1:ncol(dat_test)-1])
-if(run.test){
-  load(file="../output/fit_train.RData")
-  if (run.gbm){
+```{r}
+if(run.gbm){
+  tm_test = NA
+  feature_test <- as.matrix(dat_test[, 1:ncol(dat_test)-1])
+  if(run.test){
+    load(file="../output/fit_train.RData")
     tm_test <- system.time(prob_pred<-test_gbm(fit_train,as.data.frame(feature_test),n=best.iter.cv,pred.type = 'response'))
     
     label_pred <- colnames(prob_pred)[apply(prob_pred, 1, which.max)]
@@ -343,13 +316,17 @@ if(run.test){
     tm_test <- system.time({label_pred <- as.integer(test(fit_train, feature_test, pred.type = 'class')); 
                             prob_pred <- test(fit_train, feature_test, pred.type = 'response')})  
   }
-  
 }
 ```
 
-Random Forest:
 
-## Rebalance Train Set
+--------THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL.----------
+
+
+
+### Advanced Model 2: Random Forest
+
+* Rebalance Train Set
 
 ```{r}
 if(run.rf){
@@ -368,7 +345,8 @@ if(run.rf){
 ```
 
 
-## Tune RF
+* Tune Parameters for Random Forest
+
 ```{r}
 if(run.rf){
   source("../lib/random_forest.R")
@@ -380,11 +358,12 @@ if(run.rf){
   )
   rf.tune
 }
-
 ```
+
 mtry = 154 is the best.
 
-## Find the best ntrees
+* Find the Best ntrees
+
 ```{r}
 if(run.rf){
   source("../lib/random_forest.R")
@@ -533,6 +512,7 @@ if(run.rf){
 }
 
 ```
+
 Testing Result:
 When trees = 500:
 The AUC of model after reweighting: RF is 0.5116745 .
@@ -569,9 +549,9 @@ The accuracy of model: Random Forest on balanced testing data is 51.59118 %.
 Time for training model Random Forest =  3963.67 s 
 Time for testing model Random Forest =  0.62 s 
 
-Therefore, we should use trees = 1000.
+**Therefore, we should use trees = 1000.**
 
-## Train RF with tuning parameters
+* Train Random Forest with Tuned Parameters
 
 ```{r}
 if(run.rf){
@@ -587,7 +567,7 @@ if(run.rf){
 }
 ```
 
-## Test RF with tuning parameters
+* Test Random Forest with Tuned Parameters
 
 ```{r}
 if(run.rf){
@@ -622,7 +602,7 @@ if(run.rf){
 }
 ```
 
-## Calculate weightedAUC on testing split
+* Calculate weightedAUC on Testing Set
 
 ```{r}
 if(run.rf){
@@ -633,7 +613,7 @@ if(run.rf){
 }
 ```
 
-## Summary of RF
+* Summary of Random Forest
 
 ```{r}
 if(run.rf){
@@ -648,26 +628,30 @@ if(run.rf){
 }
 ```
 
-### Summarize Running Time
+* Summarize Running Time
 
 Prediction performance matters, so does the running times for constructing features and for training the model, especially when the computation resource is limited. 
 
-```{r running_time}
+```{r}
 # cat("Time for constructing training features=", tm_feature_train[1], "s \n")
 # cat("Time for constructing testing features=", tm_feature_test[1], "s \n")
 # cat("Time for training model=", tm_train[1], "s \n") 
 # cat("Time for testing model=", tm_test[1], "s \n")
 ```
 
+--------THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL.----------
 
-### SVM Model
 
-* Balance the Training Data
+
+
+### Advanced Model 3: SVM Model
+
+* Balance the Training Set
 
 ```{r}
 if(run.svm){
   tm_svm_rebalanced_train <- NA
-  if(needs.balanced){
+  if(sample.reweight){
     tm_svm_rebalanced_train <- system.time(svm_training_data <- ROSE(label ~ ., data = dat_train)$data)
     save(svm_training_data, file="../output/svm_training_data.RData")
     save(tm_svm_rebalanced_train, file="../output/tm_svm_rebalanced_train.RData")
@@ -675,10 +659,9 @@ if(run.svm){
     svm_training_data <- dat_train
     tm_svm_rebalanced_train <- tm_feature_train
   }
-} else {
-  load(file="../output/tm_svm_rebalanced_train.RData")
-}
-
+} #else {
+  #load(file="../output/tm_svm_rebalanced_train.RData")
+#}
 ```
 
 * Model Selection
@@ -737,7 +720,7 @@ if(run.svm){
   
   ### Evaluation on Testing Data
   tm_svm_rebalanced_test <- NA
-  if(needs.balanced){
+  if(sample.reweight){
     tm_svm_rebalanced_test <- system.time(svm_testing_data <- ROSE(label ~ ., data = dat_test)$data)
     save(svm_testing_data, file="../output/svm_testing_data.RData")
     save(tm_svm_rebalanced_test, file="../output/tm_svm_rebalanced_test.RData")
@@ -771,10 +754,10 @@ if(run.svm){
   } else {
     load(file="../output/tm_svm_rebalanced_test.RData")
   }
-} else {
-  load(file="../output/svm_radial_mod.RData")
-  load(file="../output/tm_svm_radial_mod.RData")
-}
+}# else {
+  #load(file="../output/svm_radial_mod.RData")
+  #load(file="../output/tm_svm_radial_mod.RData")
+#}
 ```
 
 * Summarize Running Time
@@ -788,79 +771,102 @@ if(run.svm){
 }
 ```
 
+--------THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL.----------
 
-## Ridge Model
 
-### apply constructed ridge model to the training data
+
+
+## Advanced Model 4: Ridge Model
+
+* Apply Constructed Ridge Model to the Training Set
+
 ```{r}
-tm_ridge_train <- NA
-if (train.ridge){
-  dat_train_rebalanced <- ROSE(label ~ ., data = dat_train, seed=2021)$data
-  tm_ridge_train <- system.time(ridge_cv_model<-ridge_train(train_data=dat_train_rebalanced, alpha=alpha, K=K, lambda=lambda))
-  save(ridge_cv_model, file="../output/ridge_cv_model.RData")
-  save(tm_ridge_train, file="../output/ridge_train_time.RData")
-}else{
-  load(file="../output/ridge_cv_model.RData")
-  load(file="../output/ridge_train_time.RData")
+if(run.ridge){
+  tm_ridge_train <- NA
+  if (train.ridge){
+    dat_train_rebalanced <- ROSE(label ~ ., data = dat_train, seed=2020)$data
+    tm_ridge_train <- system.time(ridge_cv_model<-ridge_train(train_data=dat_train_rebalanced, alpha=alpha, K=K, lambda=lambda))
+    save(ridge_cv_model, file="../output/ridge_cv_model.RData")
+    save(tm_ridge_train, file="../output/ridge_train_time.RData")
+  } else {
+    load(file="../output/ridge_cv_model.RData")
+    load(file="../output/ridge_train_time.RData")
+  }
 }
 ```
 
-### use cross-validation to choose the optimal lambda with smallest MSE
+* Use Cross-Validation to Choose the Optimal Lambda with Smallest MSE
+
 ```{r}
-if (run.cv){
-  set.seed(2020)
-  feature_train = as.matrix(dat_train[, -6007])
-  label_train = as.integer(dat_train$label)
-  ridge_model = cv.glmnet(x=feature_train, y=label_train, alpha=alpha, nfolds=K, lambda=lambda)
-  opt_lambda = ridge_model$lambda.min
-  save(opt_lambda, file="../output/ridge_optimal_lambda.RData")
-}else{
-  load(file="../output/ridge_optimal_lambda.RData")
+if(run.ridge){
+  if (run.cv){
+    set.seed(2020)
+    feature_train = as.matrix(dat_train[, -6007])
+    label_train = as.integer(dat_train$label)
+    ridge_model = cv.glmnet(x=feature_train, y=label_train, alpha=alpha, nfolds=K, lambda=lambda)
+    opt_lambda = ridge_model$lambda.min
+    save(opt_lambda, file="../output/ridge_optimal_lambda.RData")
+  } else {
+    load(file="../output/ridge_optimal_lambda.RData")
+  }
 }
 ```
 
-### predict testing data with the optimal lambda
+* Predict on Testing Set with the Optimal Lambda
+
 ```{r}
-tm_ridge_test = NA
-if(run.test){
+if(run.ridge){
+  tm_ridge_test = NA
+  if(run.test){
+    load("../output/ridge_cv_model.RData")
+    feature_test <- as.matrix(dat_test[, -6007])
+    tm_ridge_test <- system.time(label_pred<-as.integer(ridge_test(model=ridge_cv_model, features=feature_test, pred.type = 'class')))
+    save(tm_ridge_test, file="../output/ridge_test_time.RData")
+  } else{
+    load(file="../output/ridge_test_time.RData")
+  }
+}
+```
+
+* Summarize Running Time
+
+```{r}
+if(run.ridge){
+  cat("Time for constructing training features=", tm_feature_train[1], "s \n")
+  cat("Time for constructing testing features=", tm_feature_test[1], "s \n")
+  cat("Time for training ridge model=", tm_ridge_train[1], "s \n") 
+  cat("Time for testing ridge model=", tm_ridge_test[1], "s \n")
+}
+```
+
+* Evaluation on Independent Testing Data 
+
+```{r}
+if(run.ridge){
   load("../output/ridge_cv_model.RData")
   feature_test <- as.matrix(dat_test[, -6007])
-  tm_ridge_test <- system.time(label_pred<-as.integer(ridge_test(model=ridge_cv_model, features=feature_test, pred.type = 'class')))
-  save(tm_ridge_test, file="../output/ridge_test_time.RData")
-} else{
-  load(file="../output/ridge_test_time.RData")
+  label_pred = as.integer(predict(ridge_cv_model, s=opt_lambda, newx=feature_test, type='class'))
+  label_test = as.integer(dat_test$label)
+  compare <- cbind (label_test, label_pred)
+  ridge_accuracy = mean(apply(compare, 1, min)/apply(compare, 1, max)) 
+  cat("The accuracy of the ridge model is", ridge_accuracy*100, "%.\n")
+  ridge_AUC = auc(roc(label_pred,label_test))
+  cat("The AUC of the ridge model is", ridge_AUC, ".\n")
 }
 ```
 
-### summarize running time
-```{r}
-cat("Time for constructing training features=", tm_feature_train[1], "s \n")
-cat("Time for constructing testing features=", tm_feature_test[1], "s \n")
-cat("Time for training ridge model=", tm_ridge_train[1], "s \n") 
-cat("Time for testing ridge model=", tm_ridge_test[1], "s \n")
-```
-
-### run evaluation on independent testing data 
-```{r}
-load("../output/ridge_cv_model.RData")
-feature_test <- as.matrix(dat_test[, -6007])
-label_pred = as.integer(predict(ridge_cv_model, s=opt_lambda, newx=feature_test, type='class'))
-label_test = as.integer(dat_test$label)
-compare <- cbind (label_test, label_pred)
-ridge_accuracy = mean(apply(compare, 1, min)/apply(compare, 1, max)) 
-cat("The accuracy of the ridge model is", ridge_accuracy*100, "%.\n")
-ridge_AUC = auc(roc(label_pred,label_test))
-cat("The AUC of the ridge model is", ridge_AUC, ".\n")
-```
+--------THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL.----------
 
 
-### PCA + LDA
+
+
+### Advanced Model 5: PCA + LDA
 
 * Rebalance Training Set
 
 ```{r}
 if(run.pca_lda){
-  if(needs.balanced){
+  if(sample.reweight){
     balanced_train_data <- ROSE(label~.,data = dat_train)$data
     save(balanced_train_data, file="../output/feature_balanced_train.RData")
   } else {
@@ -871,12 +877,12 @@ if(run.pca_lda){
 
 * Perform PCA for Dimension Reduction
 
-Since there are over 6000 features, we implement the PCA method to reduce dimension according to the covariance matrix. We only retain PCs with large variance.
+**Since there are over 6000 features, we implement the PCA method to reduce dimension according to the covariance matrix. We only retain PCs with large variance.**
 
 ```{r pca lda}
 if(run.pca_lda){
   if(run.pca_lad.test){
-    if(needs.balanced){
+    if(sample.reweight){
       balanced_test_data <- ROSE(label~.,data = dat_test)$data
       save(balanced_test_data, file="../output/feature_balanced_test.RData")
     } else {
@@ -922,7 +928,7 @@ if(run.pca_lda){
 }
 ```
 
-By comparing the training time, test time and accuracy, we use model with 50 PCs.
+**By comparing the training time, test time and accuracy, we use model with 50 PCs.**
 
 * Model Training
 
@@ -984,5 +990,5 @@ if(run.pca_lda){
 ```
 
 
-###Reference
+### Reference
 - Du, S., Tao, Y., & Martinez, A. M. (2014). Compound facial expressions of emotion. Proceedings of the National Academy of Sciences, 111(15), E1454-E1462.
