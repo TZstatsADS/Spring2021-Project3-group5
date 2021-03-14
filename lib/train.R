@@ -35,7 +35,7 @@ svm_radial_cost_tune <- function(training_data){
   best_cost <- tune(method = svm,
                     train.x = as.matrix(training_data[,-ncol(training_data)]),
                     train.y = factor(training_data$label),
-                    kernel = "linear",
+                    kernel = "radial",
                     ranges = list(gamma = seq(0.001, 0.1, 0.02), cost = seq(0.01, 0.1, 0.02)
                     ))
   return(best_cost)
