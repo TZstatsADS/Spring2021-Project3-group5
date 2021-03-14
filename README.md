@@ -6,13 +6,13 @@
 
 Term: Spring 2021
 
-+ Team ##
++ Team 5
 + Team members
-	+ team member 1
-	+ team member 2
-	+ team member 3
-	+ team member 4
-	+ team member 5
+	+ Jingbin Cao
+	+ Chuanchuan Liu
+	+ Dennis Shpits
+	+ Yingyao Wu
+	+ Zikun Zhuang
 
 + Project summary: In this project, we created a classification engine for facial emotion recognition. 
 	
