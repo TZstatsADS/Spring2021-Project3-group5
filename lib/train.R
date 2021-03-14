@@ -17,8 +17,9 @@ svm_linear_train = function(training_data, linear_cost, cv){
   svm.fit <- svm(label ~ ., data = training_data, kernel = "linear", cross = cv, cost = linear_cost)
   return(svm.fit)
 }
+
 train_gbm <- function(features, s, K = 5, n=100, w = NULL){
-  
+ 
   if (!is.null(w)){
     model<- gbm(label~. ,data = features,
                 distribution = "multinomial", 
@@ -30,10 +31,8 @@ train_gbm <- function(features, s, K = 5, n=100, w = NULL){
                 verbose = TRUE)
     
   } else {
-    features$label <- as.factor(features$label)
-    trainSplit <- SMOTE(label ~ ., features, perc.over = 100, perc.under=200)
     
-    model<- gbm(label~. ,data = trainSplit,
+    model<- gbm(label~. ,data = features,
                 distribution = "multinomial", 
                 n.trees = n,
                 shrinkage = s,
