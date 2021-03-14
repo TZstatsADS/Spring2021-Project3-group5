@@ -160,18 +160,26 @@ In this chunk, we have a set of controls for the evaluation experiments.
 + (T/F) train ridge model
 
 ```{r exp_setup}
-run.cv <- FALSE # run cross-validation on the training set
+run.cv <- TRUE # run cross-validation on the training set
 sample.reweight <- FALSE # run sample reweighting in model training
 K <- 5  # number of CV folds
-gbm.numtrees <- 1000 #number of trees to use in gbm
 run.feature.train <- TRUE # process features for training set
 run.test <- TRUE # run evaluation on an independent test set
+
+# gbm
+gbm.numtrees <- 1000 #number of trees to use in gbm
 run.feature.test <- TRUE # process features for test set
 run.poly.feature <- TRUE # process poly features
 run.add.poly.feature <- TRUE # and poly features to dist matrix
 run.gbm <- TRUE
+
+# svm
+run.svm <- FALSE # svm is the chosen advanced model
 needs.balanced <- TRUE # balance data for model fitting
 model.selection <- TRUE # perform model selection on svm models
+run.svm.test <- TRUE # evaluate performance on the test set
+
+# random forest
 run.balanced.data <- TRUE # Whether or not balance the data
 train.random.forest <- F # Train Random Forest Model
 tune.random.forest <- F # Tune Random Forest Model
@@ -684,13 +692,20 @@ Prediction performance matters, so does the running times for constructing featu
 
 ```{r}
 library(ROSE)
-tm_svm_rebalanced_train <- NA
-if(needs.balanced){
-  tm_svm_rebalanced_train <- system.time(svm_training_data <- ROSE(label ~ ., data = dat_train)$data)
-  save(svm_training_data, file="../output/svm_training_data.RData")
+if(run.svm){
+  tm_svm_rebalanced_train <- NA
+  if(needs.balanced){
+    tm_svm_rebalanced_train <- system.time(svm_training_data <- ROSE(label ~ ., data = dat_train)$data)
+    save(svm_training_data, file="../output/svm_training_data.RData")
+    save(tm_svm_rebalanced_train, file="../output/tm_svm_rebalanced_train.RData")
+  } else {
+    svm_training_data <- dat_train
+    tm_svm_rebalanced_train <- tm_feature_train
+  }
 } else {
-  load(file="../output/svm_training_data.RData")
+  load(file="../output/tm_svm_rebalanced_train.RData")
 }
+
 ```
 
 
@@ -698,79 +713,106 @@ if(needs.balanced){
 
 ```{r}
 library(e1071)
-tm_svm_default_mod <- NA
-tm_svm_linear_cost <-NA
-tm_svm_linear_mod <- NA
-if(model.selection){
-  svm_model_auc <- rep(NA, 2)
-  # default model
-  if(run.cv){
-    tm_svm_default_mod < system.time(svm_default_mod <- svm_default_train(svm_training_data, K))
-    save(svm_default_mod, file="../output/svm_default_mod.RData")
-  } else {
-    load(file="../output/svm_default_mod.RData")
-  }
-  svm_default_pred <- svm_test(svm_default_mod, svm_training_data)
-  #mean(round(svm_default_pred == svm_training_data$label))
-  tpr.fpr_default <- WeightedROC(as.numeric(svm_default_pred), svm_training_data$label)
-  svm_model_auc[1] <- WeightedAUC(tpr.fpr_default)
+if(run.svm){
+  tm_svm_linear_mod <- NA
+  tm_svm_radial_mod <- NA
   
-  
-  # linear kernel
-  if(run.cv){
-    tm_svm_linear_cost < system.time(best.cost <- svm.cv.linear(svm_training_data, K))
-    tm_svm_linear_mod <- system.time(svm_linear_mod <- svm_linear_train(svm_training_data, best.cost, K))
-    save(svm_linear_mod, file="../output/svm_linear_mod.RData")
+  if(model.selection){
+    svm_model_auc <- rep(NA, 2)
+    
+    ### linear kernel
+    if(run.cv){
+      #best.linear.cost <- svm_linear_cost_tune(svm_training_data)
+      #cat("The best cost for svm model with linear kernel is: ", best.linear.cost$best.parameters$cost)
+      tm_svm_linear_mod <- system.time(svm_linear_mod <- svm_linear_train(svm_training_data, 0.01, K))
+      save(svm_linear_mod, file="../output/svm_linear_mod.RData")
+      save(tm_svm_linear_mod, file="../output/tm_svm_linear_mod.RData")
+    } else {
+      load(file="../output/svm_linear_mod.RData")
+      load(file="../output/tm_svm_linear_mod.RData")
+    }
+    svm_linear_pred <- svm_test(svm_linear_mod, svm_training_data, TRUE)
+    #mean(round(svm_linear_pred == svm_training_data$label))
+    svm_linear_accu <- mean(round(svm_linear_pred == svm_training_data$label))
+    tpr.fpr_linear <- WeightedROC(as.numeric(svm_linear_pred), svm_training_data$label)
+    svm_model_auc[1] <- WeightedAUC(tpr.fpr_linear)
+    
+    
+    ### radial basis kernel
+    if(run.cv){
+      #best.radial.cost <- svm_radial_cost_tune(svm_training_data)
+      #radial_cost = best.radial.cost$best.parameters$cost
+      #radial_gamma = best.radial.cost$best.parameters$gamma
+      
+      tm_svm_radial_mod < system.time(svm_radial_mod <- svm_radial_train(svm_training_data, 1, K))
+      save(svm_radial_mod, file="../output/svm_radial_mod.RData")
+      save(tm_svm_radial_mod, file="../output/tm_svm_radial_mod.RData")
+    } else { 
+      load(file="../output/svm_radial_mod.RData")
+      load(file="../output/tm_svm_radial_mod.RData")
+    }
+    svm_radial_pred <- svm_test(svm_radial_mod, svm_training_data, TRUE)
+    # evaluate performance
+    svm_radial_accu <- mean(round(svm_radial_pred == svm_training_data$label))
+    tpr.fpr_default <- WeightedROC(as.numeric(svm_radial_pred), svm_training_data$label)
+    svm_model_auc[2] <- WeightedAUC(tpr.fpr_default)
   } else {
     load(file="../output/svm_linear_mod.RData")
+    load(file="../output/tm_svm_linear_mod.RData")
+    load(file="../output/svm_radial_mod.RData")
+    load(file="../output/tm_svm_radial_mod.RData")
   }
-  svm_linear_pred <- svm_test(svm_linear_mod, svm_training_data)
-  #mean(round(svm_linear_pred == svm_training_data$label))
-  tpr.fpr_linear <- WeightedROC(as.numeric(svm_linear_pred), svm_training_data$label)
-  svm_model_auc[2] <- WeightedAUC(tpr.fpr_linear)
   
   
-  # select model with the highest auc
-  curr_best_auc <- which.max(svm_model_auc)
-  if(curr_best_auc == 1){
-    svm_best_mod <- svm_default_mod
-    save(svm_best_mod, file="../output/svm_best_mod.RData")
-  } else{
-    svm_best_mod <- svm_linear_mod
-    save(svm_best_mod, file="../output/svm_best_mod.RData")
+  ### Evaluation on Testing Data
+  tm_svm_rebalanced_test <- NA
+  if(needs.balanced){
+    tm_svm_rebalanced_test <- system.time(svm_testing_data <- ROSE(label ~ ., data = dat_test)$data)
+    save(svm_testing_data, file="../output/svm_testing_data.RData")
+    save(tm_svm_rebalanced_test, file="../output/tm_svm_rebalanced_test.RData")
+  } else {
+    svm_testing_data <- dat_test
+    tm_svm_rebalanced_test <- tm_feature_test
   }
-} else{
-  load(file="../output/svm_best_mod.RData")
-}
-```
+  
+  if(run.svm.test){
+    svm_auc <- rep(NA, 2)
+    svm_accu <- rep(NA, 2)
+    ## linear
+    tm_svm_linear_test <- system.time(svm_linear_pred <- svm_test(svm_linear_mod, svm_testing_data))
+    svm_accu[1] = mean(round(svm_linear_pred == svm_testing_data$label))
+    tpr.fpr.linear <- WeightedROC(as.numeric(svm_linear_pred), svm_testing_data$label)
+    svm_auc[1] = WeightedAUC(tpr.fpr.linear)
+    ## rbf
+    tm_svm_rbf_test <- system.time(svm_rbf_pred <- svm_test(svm_radial_mod, svm_testing_data))
+    svm_accu[2] = mean(round(svm_rbf_pred == svm_testing_data$label))
+    tpr.fpr.rbf <- WeightedROC(as.numeric(svm_linear_pred), svm_testing_data$label)
+    svm_auc[2] = WeightedAUC(tpr.fpr.rbf)
+    
+    save(tm_svm_radial_mod, file="../output/tm_svm_linear_test.RData")
+    
+    ## performance
+    svm_auc
+    svm_accu
 
-* Evaluation on Testing Data
-
-```{r}
-tm_svm_rebalanced_test <- NA
-if(needs.balanced){
-  tm_svm_rebalanced_test <- system.time(svm_testing_data <- ROSE(label ~ ., data = dat_test)$data)
-  save(svm_testing_data, file="../output/svm_testing_data.RData")
+    cat("The accuracy of svm model is", svm_accu[2]*100, "%.\n")
+    cat("The AUC of svm model is", svm_auc[2], ".\n")
+  } else {
+    load(file="../output/tm_svm_rebalanced_test.RData")
+  }
 } else {
-  load(file="../output/svm_testing_data.RData")
+  load(file="../output/svm_radial_mod.RData")
+  load(file="../output/tm_svm_radial_mod.RData")
 }
-tm_svm_test <- system.time(svm_pred <- svm_test(svm_linear_mod, svm_testing_data))
-
-svm_accu = mean(round(svm_pred == svm_testing_data$label))
-tpr.fpr <- WeightedROC(as.numeric(svm_pred), svm_testing_data$label)
-svm_auc = WeightedAUC(tpr.fpr)
-
-cat("The accuracy of svm model is", svm_accu*100, "%.\n")
-cat("The AUC of svm model is", svm_auc, ".\n")
 ```
 
 * Summarize Running Time
 
 ```{r}
-cat("Time for rebalancing training data =", tm_svm_rebalanced_train[1], "s \n")
-cat("Time for rebalancing testing data =", tm_svm_rebalanced_test[1], "s \n")
-cat("Time for training model =", tm_svm_linear_mod[1], "s \n")
-cat("Time for testing model=", tm_svm_test[1], "s \n")
+#cat("Time for rebalancing training data =", tm_svm_rebalanced_train[1], "s \n")
+#cat("Time for rebalancing testing data =", tm_svm_rebalanced_test[1], "s \n")
+#cat("Time for training svm model =", tm_svm_radial_mod[1], "s \n")
+cat("Time for testing svm model=", tm_svm_rbf_test[1], "s \n")
 ```
 
 
