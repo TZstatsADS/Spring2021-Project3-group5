@@ -696,7 +696,6 @@ library(e1071)
 if(run.svm){
   tm_svm_linear_mod <- NA
   tm_svm_radial_mod <- NA
-  tm_svm_best_mod <- NA
   
   if(model.selection){
     svm_model_auc <- rep(NA, 2)
@@ -725,7 +724,7 @@ if(run.svm){
       #radial_cost = best.radial.cost$best.parameters$cost
       #radial_gamma = best.radial.cost$best.parameters$gamma
       
-      tm_svm_radial_mod < system.time(svm_radial_mod <- svm_radial_train(svm_training_data, 0.1, 1, K))
+      tm_svm_radial_mod < system.time(svm_radial_mod <- svm_radial_train(svm_training_data, 1, K))
       save(svm_radial_mod, file="../output/svm_radial_mod.RData")
       save(tm_svm_radial_mod, file="../output/tm_svm_radial_mod.RData")
     } else { 
@@ -770,20 +769,20 @@ if(run.svm){
     tpr.fpr.rbf <- WeightedROC(as.numeric(svm_linear_pred), svm_testing_data$label)
     svm_auc[2] = WeightedAUC(tpr.fpr.rbf)
     
-    save(tm_svm_linear_test, file="../output/tm_svm_linear_test.RData")
+    save(tm_svm_radial_mod, file="../output/tm_svm_linear_test.RData")
     
     ## performance
     svm_auc
     svm_accu
 
-    cat("The accuracy of svm model is", svm_accu[1]*100, "%.\n")
-    cat("The AUC of svm model is", svm_auc[1], ".\n")
+    cat("The accuracy of svm model is", svm_accu[2]*100, "%.\n")
+    cat("The AUC of svm model is", svm_auc[2], ".\n")
   } else {
     load(file="../output/tm_svm_rebalanced_test.RData")
   }
 } else {
-  load(file="../output/svm_linear_mod.RData")
-  load(file="../output/tm_svm_linear_mod.RData")
+  load(file="../output/svm_radial_mod.RData")
+  load(file="../output/tm_svm_radial_mod.RData")
 }
 ```
 
@@ -792,8 +791,8 @@ if(run.svm){
 ```{r}
 #cat("Time for rebalancing training data =", tm_svm_rebalanced_train[1], "s \n")
 #cat("Time for rebalancing testing data =", tm_svm_rebalanced_test[1], "s \n")
-cat("Time for training svm model =", tm_svm_linear_mod[1], "s \n")
-cat("Time for testing svm model=", tm_svm_linear_test[1], "s \n")
+#cat("Time for training svm model =", tm_svm_radial_mod[1], "s \n")
+cat("Time for testing svm model=", tm_svm_rbf_test[1], "s \n")
 ```
 
 

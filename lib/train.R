@@ -41,9 +41,8 @@ svm_radial_cost_tune <- function(training_data){
   return(best_cost)
 }
 
-svm_radial_train <- function(training_data, radial_gamma, radial_cost, cv){
+svm_radial_train <- function(training_data, radial_cost, cv){
   svm.fit <- svm(label ~ ., data = training_data, kernel = "radial", 
-                 gamma = radial_gamma,
                  cost = radial_cost, 
                  cross = cv, 
                  type = "C-classification")
