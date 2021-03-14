@@ -29,3 +29,15 @@ test_gbm <- function(model, input.test, n, pred.type){
   
   return(res)
 }
+
+# ridge
+ridge_test <- function(model, features, pred.type){
+  
+  ### Input: the fitted classification model using training data and processed features from testing images 
+  ### Output: model predictions
+  
+  library(prediction)
+  pred = predict(model, s=opt_lambda, newx=features, type=pred.type)
+  
+  return (pred)
+}

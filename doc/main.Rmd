@@ -114,6 +114,17 @@ library(e1071)
 library(caTools)
 ```
 
+```{r}
+if(!require("prediction")){
+  install.packages("prediction")
+}
+if(!require("pROC")){
+  install.packages("pROC")
+}
+library(prediction)
+library(pROC)
+```
+
 
 ### Step 0 set work directories
 ```{r wkdir, eval=FALSE}
@@ -145,6 +156,8 @@ In this chunk, we have a set of controls for the evaluation experiments.
 + (T/F) return polynomial features matrix only
 + (T/F) add polynomial features to starter code features matrix
 + (T/F) run gbm baseline model
++ (0/1) alpha, alpha=0 for ridge regression, alpha=1 for lasso regression
++ (T/F) train ridge model
 
 ```{r exp_setup}
 run.cv <- TRUE # run cross-validation on the training set
@@ -170,6 +183,8 @@ run.svm.test <- TRUE # evaluate performance on the test set
 run.balanced.data <- TRUE # Whether or not balance the data
 train.random.forest <- F # Train Random Forest Model
 tune.random.forest <- F # Tune Random Forest Model
+alpha <- 0 # ridge regression
+train.ridge <- TRUE # train ridge model
 ```
 
 Using cross-validation or independent test set evaluation, we compare the performance of models with different specifications. In this Starter Code, we tune parameter lambda (the amount of shrinkage) for logistic regression with LASSO penalty.
@@ -177,6 +192,11 @@ Using cross-validation or independent test set evaluation, we compare the perfor
 ```{r model_setup}
 lmbd = c(1e-3, 5e-3, 1e-2, 5e-2, 1e-1)
 model_labels = paste("LASSO Penalty with lambda =", lmbd)
+```
+
+The amount of the penalty for ridge regression can be fine-tuned using lambda.
+```{r}
+lambda = 10^seq(10, -2, length = 100)
 ```
 
 ### Step 2: import data and train-test split 
@@ -793,6 +813,71 @@ if(run.svm){
 #cat("Time for rebalancing testing data =", tm_svm_rebalanced_test[1], "s \n")
 #cat("Time for training svm model =", tm_svm_radial_mod[1], "s \n")
 cat("Time for testing svm model=", tm_svm_rbf_test[1], "s \n")
+```
+
+
+## ridge model
+
+### apply constructed ridge model to the training data
+```{r}
+tm_ridge_train <- NA
+if (train.ridge){
+  dat_train_rebalanced <- ROSE(label ~ ., data = dat_train, seed=2021)$data
+  tm_ridge_train <- system.time(ridge_cv_model<-ridge_train(train_data=dat_train_rebalanced, alpha=alpha, K=K, lambda=lambda))
+  save(ridge_cv_model, file="../output/ridge_cv_model.RData")
+  save(tm_ridge_train, file="../output/ridge_train_time.RData")
+}else{
+  load(file="../output/ridge_cv_model.RData")
+  load(file="../output/ridge_train_time.RData")
+}
+```
+
+### use cross-validation to choose the optimal lambda with smallest MSE
+```{r}
+if (run.cv){
+  set.seed(2020)
+  feature_train = as.matrix(dat_train[, -6007])
+  label_train = as.integer(dat_train$label)
+  ridge_model = cv.glmnet(x=feature_train, y=label_train, alpha=alpha, nfolds=K, lambda=lambda)
+  opt_lambda = ridge_model$lambda.min
+  save(opt_lambda, file="../output/ridge_optimal_lambda.RData")
+}else{
+  load(file="../output/ridge_optimal_lambda.RData")
+}
+```
+
+### predict testing data with the optimal lambda
+```{r}
+tm_ridge_test = NA
+if(run.test){
+  load("../output/ridge_cv_model.RData")
+  feature_test <- as.matrix(dat_test[, -6007])
+  tm_ridge_test <- system.time(label_pred<-as.integer(ridge_test(model=ridge_cv_model, features=feature_test, pred.type = 'class')))
+  save(tm_ridge_test, file="../output/ridge_test_time.RData")
+} else{
+  load(file="../output/ridge_test_time.RData")
+}
+```
+
+### summarize running time
+```{r}
+cat("Time for constructing training features=", tm_feature_train[1], "s \n")
+cat("Time for constructing testing features=", tm_feature_test[1], "s \n")
+cat("Time for training ridge model=", tm_ridge_train[1], "s \n") 
+cat("Time for testing ridge model=", tm_ridge_test[1], "s \n")
+```
+
+### run evaluation on independent testing data 
+```{r}
+load("../output/ridge_cv_model.RData")
+feature_test <- as.matrix(dat_test[, -6007])
+label_pred = as.integer(predict(ridge_cv_model, s=opt_lambda, newx=feature_test, type='class'))
+label_test = as.integer(dat_test$label)
+compare <- cbind (label_test, label_pred)
+ridge_accuracy = mean(apply(compare, 1, min)/apply(compare, 1, max)) 
+cat("The accuracy of the ridge model is", ridge_accuracy*100, "%.\n")
+ridge_AUC = auc(roc(label_pred,label_test))
+cat("The AUC of the ridge model is", ridge_AUC, ".\n")
 ```
 
 
