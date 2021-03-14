@@ -247,10 +247,11 @@ if(run.feature.test){
 }
 ```
 
-### Step 4: Train a classification model with training features and responses
+### Step 4: Train classification models with training features and responses and Run test on test images
+
 Call the train model and test model from library. 
 
-`train.R` and `test.R` should be wrappers for all your model training steps and your classification/prediction steps. 
+`train.R` and `test.R` are wrappers for all model training steps and classification/prediction steps. 
 
 + `train.R`
   + Input: a data frame containing features and labels and a parameter list.
@@ -268,6 +269,7 @@ source("../lib/test.R")
 ```
 
 #### Model selection with cross-validation
+
 * Do model selection by choosing among different values of training model parameters.
 
 ```{r runcv}
@@ -286,8 +288,6 @@ if(run.cv){
   load("../output/res_cv.RData")
 }
 ```
-
-# Advanced Models:
 
 Create weight test
 
@@ -856,6 +856,8 @@ cat("The AUC of the ridge model is", ridge_AUC, ".\n")
 
 ### PCA + LDA
 
+* Rebalance Training Set
+
 ```{r}
 if(run.pca_lda){
   if(needs.balanced){
@@ -864,19 +866,120 @@ if(run.pca_lda){
   } else {
     load(balanced_train_data, file="../output/feature_train.RData")
   }
-  
-  
-  
-  
-  ### test
+}
+```
+
+* Perform PCA for Dimension Reduction
+
+Since there are over 6000 features, we implement the PCA method to reduce dimension according to the covariance matrix. We only retain PCs with large variance.
+
+```{r pca lda}
+if(run.pca_lda){
   if(run.pca_lad.test){
     if(needs.balanced){
       balanced_test_data <- ROSE(label~.,data = dat_test)$data
-    save(balanced_test_data, file="../output/feature_balanced_test.RData")
+      save(balanced_test_data, file="../output/feature_balanced_test.RData")
     } else {
       load(balanced_test_data, file="../output/feature_balanced_test.RData")
     }
   }
+  
+  if(run.select_PC){
+    #separate the features from label
+    dat_train_new <- balanced_train_data[,-dim(balanced_train_data)[2]]
+    dat_test_new <- balanced_test_data[,-dim(balanced_test_data)[2]]
+    #create a vector contain target number of PCs
+    num.pca <- c(10,50,500,1000)
+    train_pca <- function(num.pca){
+      for(i in 1:length(num.pca)){
+        #start time for training the model
+        train.model.start = proc.time()
+        #run PCA
+        pca <- prcomp(dat_train_new)
+        #store for each potential PC
+        train_pca <- data.frame(pca$x[,1:num.pca[i]], label = balanced_train_data[dim(balanced_train_data)[2]])
+        pred_pca <- predict(pca,dat_test_new)
+        test_pca <- data.frame(pred_pca[,1:num.pca[i]], label = balanced_test_data[dim(balanced_test_data)[2]])
+        #fitting the lda model
+        lda_pca <- lda(label ~ ., data = train_pca) 
+        #stop time for training the model
+        train.model.end = proc.time()
+        #start time for testing the model
+        test.model.start = proc.time()
+        #predict lda model
+        lda_pred_pca = predict(lda_pca,test_pca[-dim(test_pca)[2]])
+        #end time for testing the model
+        test.model.end = proc.time()
+        #test accuracy
+        test_accuracy=confusionMatrix(lda_pred_pca$class, test_pca$label)$overall[1]
+        print(list(l1=train.model.end - train.model.start,
+               l2=test.model.end - test.model.start,
+               l3=test_accuracy))
+      }
+    }
+  train_pca(num.pca)
+  }
+}
+```
+
+By comparing the training time, test time and accuracy, we use model with 50 PCs.
+
+* Model Training
+
+```{r final model}
+if(run.pca_lda){
+  train.model.start = proc.time()
+  if(run.lda){
+    pca_10 <- prcomp(dat_train_new)
+    train_pca_10 <- data.frame(pca_10$x[,1:50], label = balanced_train_data[dim(balanced_train_data)[2]])
+    pred_pca_10 <- predict(pca_10,dat_test_new)
+    test_pca_10 <- data.frame(pred_pca_10[,1:50], label = balanced_test_data[dim(balanced_test_data)[2]])
+    save(train_pca_10, file="../output/feature_pca_train.RData")
+    save(test_pca_10, file="../output/feature_pca_test.RData")  
+  } else {
+    load(train_pca_10, file="../output/feature_pca_train.RData")
+    load(test_pca_10, file="../output/feature_pca_test.RData")  
+  }
+  #calculate the training time
+  lda_pca_10 <- lda(label ~ ., data = train_pca_10, cv = TRUE)
+  train.model.end = proc.time()
+}
+```
+
+* Calculate the Training and Testing Accuracy of LDA Model
+
+```{r}
+if(run.pca_lda){
+  test.model.start = proc.time()
+  pred_train_lda <- predict(lda_pca_10, train_pca_10[-dim(train_pca_10)[2]])
+  accu_train_lda <- mean(pred_train_lda$class == train_pca_10$label)
+  cat("The trainig accuracy of model: LDA", "is", accu_train_lda*100, "%.\n")
+  #calculating the test time
+  if(run.test){
+    pred_test_lda <- predict(lda_pca_10, test_pca_10)
+  }
+  test.model.end = proc.time()
+  save(pred_test_lda, file="../output/fit_train.RData")
+  accu_test_lda <- mean(pred_test_lda$class == test_pca_10$label)
+  cat("The accuracy of model: LDA", "is", accu_test_lda*100, "%.\n")
+  tpr.fpr <- WeightedROC(as.numeric(pred_test_lda$class), test_pca_10$label)
+  lda_auc = WeightedAUC(tpr.fpr)
+  cat("The AUC of model: LDA is", lda_auc, ".\n")
+}
+```
+
+* Summarize Running Time
+
+Prediction performance matters, so does the running times for constructing features and for training the model, especially when the computation resource is limited. 
+
+```{r}
+if(run.pca_lda){
+  tm_train <- train.model.end - train.model.start
+  tm_test <- test.model.end - test.model.start
+  cat("Time for constructing training features=", tm_feature_train[1], "s \n")
+  cat("Time for constructing testing features=", tm_feature_test[1], "s \n")
+  cat("Time for training model=", tm_train[1], "s \n") 
+  cat("Time for testing model=", tm_test[1], "s \n")
 }
 ```
 
