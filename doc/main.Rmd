@@ -780,7 +780,8 @@ cat("Time for testing model=", tm_svm_test[1], "s \n")
 ```{r}
 tm_ridge_train <- NA
 if (train.ridge){
-  tm_ridge_train <- system.time(ridge_cv_model<-ridge_train(train_data=dat_train, alpha=alpha, K=K, lambda=lambda))
+  dat_train_rebalanced <- ROSE(label ~ ., data = dat_train, seed=2021)$data
+  tm_ridge_train <- system.time(ridge_cv_model<-ridge_train(train_data=dat_train_rebalanced, alpha=alpha, K=K, lambda=lambda))
   save(ridge_cv_model, file="../output/ridge_cv_model.RData")
   save(tm_ridge_train, file="../output/ridge_train_time.RData")
 }else{
