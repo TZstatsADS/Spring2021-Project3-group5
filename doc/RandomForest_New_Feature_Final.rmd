@@ -121,7 +121,7 @@ run.add.poly.feature <- TRUE # and poly features to dist matrix
 run.gbm <- F
 needs.balanced <- TRUE # balance data for model fitting
 model.selection <- TRUE # perform model selection on svm models
-run.balanced.data <- F # Whether or not balance the data
+run.balanced.data <- TRUE # Whether or not balance the data
 # Random Forest Model Tune and Train
 train.random.forest <- F # Train Random Forest Model
 test.random.forest <- TRUE # Test Random Forest Model
