@@ -270,7 +270,7 @@ source("../lib/train.R")
 source("../lib/test.R")
 ```
 
-### Baseline Model
+# Baseline Model
 
 
 --------THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL.----------
@@ -279,7 +279,7 @@ source("../lib/test.R")
 
 
 
-### Advanced Model 1: Improved GBM Model
+# Advanced Model 1: Improved GBM Model
 
 * Model Training
 
@@ -325,8 +325,7 @@ if(run.gbm){
 --------THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL.----------
 
 
-
-### Advanced Model 2: Random Forest
+# Advanced Model 2: Random Forest
 
 * Balance Train Set
 
@@ -702,7 +701,7 @@ if(run.rf){
 
 
 
-### Advanced Model 3: SVM Model
+# Advanced Model 3: SVM Model
 
 * Balance the Training Set
 
@@ -834,7 +833,7 @@ if(run.svm){
 
 
 
-## Advanced Model 4: Ridge Model
+# Advanced Model 4: Ridge Model
 
 * Apply Constructed Ridge Model to the Training Set
 
@@ -918,7 +917,7 @@ if(run.ridge){
 
 
 
-### Advanced Model 5: PCA + LDA
+# Advanced Model 5: PCA + LDA
 
 * Rebalance Training Set
 
