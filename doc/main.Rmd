@@ -858,8 +858,9 @@ if(run.ridge){
 if(run.ridge){
   if (run.cv){
     set.seed(2020)
-    feature_train = as.matrix(dat_train[, -6007])
-    label_train = as.integer(dat_train$label)
+    dat_train_rebalanced <- ROSE(label ~ ., data = dat_train, seed=2020)$data
+    feature_train = as.matrix(dat_train_rebalanced[, -6007])
+    label_train = as.integer(dat_train_rebalanced$label)
     ridge_model = cv.glmnet(x=feature_train, y=label_train, alpha=alpha, nfolds=K, lambda=lambda)
     opt_lambda = ridge_model$lambda.min
     save(opt_lambda, file="../output/ridge_optimal_lambda.RData")
