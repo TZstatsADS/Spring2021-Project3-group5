@@ -85,8 +85,8 @@ ridge_train <- function(train_data, alpha, K, lambda){
   ### Input: a data frame containing features and labels and a parameter list.
   ### Output:a trained model
   
-  feature_train = as.matrix(dat_train[, -6007])
-  label_train = as.integer(dat_train$label) 
+  feature_train = as.matrix(dat_train_rebalanced[, -6007])
+  label_train = as.integer(dat_train_rebalanced$label) 
   
   library(glmnet)
   ridge_model <- cv.glmnet(x=feature_train, y=label_train, alpha=alpha, nfolds=K, lambda=lambda)
