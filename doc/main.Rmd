@@ -135,6 +135,7 @@ In this chunk, we have a set of controls for the evaluation experiments.
 + (T/F) run random forest model
 + (T/F) rebalance training set
 + (T/F) train random forest model
++ (T/F) run evaluation on the test set
 + (T/F) tune hyperparameters for random forest model
 
 + (T/F) run ridge model
@@ -168,8 +169,9 @@ run.svm.test <- TRUE # evaluate performance on the test set
 # random forest
 run.rf <- FALSE # random forest is the chosen advanced model
 run.balanced.data <- TRUE # whether or not balance the data
-train.random.forest <- FALSE # train Random Forest Model
-tune.random.forest <- FALSE # tune Random Forest Model
+train.random.forest <- FALSE # train random forest model
+test.random.forest <- TRUE # test random forest model
+tune.random.forest <- FALSE # tune random forest model
 
 # ridge
 run.ridge <- FALSE # ridge is the chosen advanced model
@@ -326,21 +328,25 @@ if(run.gbm){
 
 ### Advanced Model 2: Random Forest
 
-* Rebalance Train Set
+* Balance Train Set
 
 ```{r}
 if(run.rf){
   # transfer label column from factor to numeric
-  dat_train$label <- as.numeric(dat_train$label)-1
-  dat_test$label <- as.numeric(dat_test$label)-1
-  #Rebalancing training data-Bootstrap Random Over-Sampling Examples Technique (ROSE) source
+  dat_train$label <- as.numeric(dat_train$label)
+  dat_test$label <- as.numeric(dat_test$label)
+
   if(run.balanced.data){
-  dat_train_balanced_rose<-ROSE(label~., dat_train,seed=2020)$data
-  save(dat_train_balanced_rose, file="../output/balanced_data.RData")
+    dat_train_balanced_rose<-ROSE(label~., dat_train,seed=2020)$data
+    save(dat_train_balanced_rose, file="../output/balanced_train_data_rose.RData")
+    dat_test_balanced_rose <- ROSE(label~., dat_test, seed=2020)$data
+    save(dat_test_balanced_rose, file = "../output/balanced_test_data_rose.RData")
   } else {
-    load(file="../output/balanced_data.RData")
+    load(file = "../output/balanced_train_data_rose.RData")
+    load(file = "../output/balanced_test_data_rose.RData")
   }
   table(dat_train_balanced_rose$label)
+  table(dat_test_balanced_rose$label)
 }
 ```
 
@@ -349,294 +355,346 @@ if(run.rf){
 
 ```{r}
 if(run.rf){
-  source("../lib/random_forest.R")
+  source("../lib/random_forest_old_feature.R")
   if(tune.random.forest){
-  time.rf.tune <- system.time(rf.tune <- random_forest_tune(dat_train_balanced_rose))
-  save(rf.tune, file="../output/rf_tune.RData")
-  }else(
+    time.rf.tune <- system.time(rf.tune <- random_forest_tune(dat_train_balanced_rose))
+    save(rf.tune, file="../output/rf_tune.RData")
+    save(time.rf.tune, file = "../output/rf_tune_time.RData")
+  }else{
     load("../output/rf_tune.RData")
-  )
+    load("../output/rf_tune_time.RData")
+  }
   rf.tune
+  time.rf.tune[1]
 }
 ```
 
-mtry = 154 is the best.
+mtry = 308 is the best.
 
-* Find the Best ntrees
+* Tune Trees and Nodes
 
 ```{r}
 if(run.rf){
-  source("../lib/random_forest.R")
-  #Train 500
+  source("../lib/random_forest_old_feature.R")
   if(tune.random.forest){
-  time.rf.train <- system.time(random_forest_fit_500 <- random_forest_train_500(dat_train_balanced_rose,mtry = 154))
-  save(random_forest_fit_500, file = "../output/rf_train_500_trees.RData")
+    # Train 500 trees:
+    time.rf.train.tree500 <- system.time(random_forest_fit_500_trees <-
+                                           random_forest_train_500(dat_train_balanced_rose,mtry = 308))
+    save(random_forest_fit_500_trees, file = "../output/rf_train_500_trees.RData")
+    save(time.rf.train.tree500, file = "../output/rf_train_500_trees_time.RData")
+    cat("500 tree time", time.rf.train.tree500)
+    # Train 1000 trees:
+    time.rf.train.tree1000 <- system.time(random_forest_fit_1000_trees <-
+                                            random_forest_train_1000(dat_train_balanced_rose,mtry = 308))
+    save(random_forest_fit_1000_trees, file = "../output/rf_train_1000_trees.RData")
+    save(time.rf.train.tree1000, file = "../output/rf_train_1000_trees_time.RData")
+    cat("1000 tree time", time.rf.train.tree1000)
+    # Train 1500 trees:
+    time.rf.train.tree1500 <- system.time(random_forest_fit_1500_trees <-
+                                            random_forest_train_1500(dat_train_balanced_rose,mtry = 308))
+    save(random_forest_fit_1500_trees, file = "../output/rf_train_1500_trees.RData")
+    save(time.rf.train.tree1500, file = "../output/rf_train_1500_trees_time.RData")
+    cat("1500 tree time", time.rf.train.tree1500)
+    # Train 2000 trees:
+    time.rf.train.tree2000 <- system.time(random_forest_fit_2000_trees <-
+                                            random_forest_train_2000(dat_train_balanced_rose,mtry = 308))
+    save(random_forest_fit_2000_trees, file = "../output/rf_train_2000_trees.RData")
+    save(time.rf.train.tree2000, file = "../output/rf_train_2000_trees_time.RData")
+    cat("2000 tree time", time.rf.train.tree2000)
+    # Train 2500 trees:
+    time.rf.train.tree2500 <- system.time(random_forest_fit_2500_trees <-
+                                            random_forest_train_2500(dat_train_balanced_rose,mtry = 308))
+    save(random_forest_fit_2500_trees, file = "../output/rf_train_2500_trees.RData")
+    save(time.rf.train.tree2500, file = "../output/rf_train_2500_trees_time.RData")
+    cat("2500 tree time", time.rf.train.tree2500)
+
+    # Train 10 nodes
+    time.rf.train.node10 <- system.time(random_forest_fit_10_nodes <-
+                                          random_forest_train_10(dat_train_balanced_rose,mtry = 308))
+    save(random_forest_fit_10_nodes, file = "../output/rf_train_10_nodes.RData")
+    save(time.rf.train.node10, file = "../output/rf_train_10_nodes_time.RData")
+    cat("10 node time", time.rf.train.node10)
+    # Train 15 nodes
+    time.rf.train.node15 <- system.time(random_forest_fit_15_nodes <-
+                                          random_forest_train_15(dat_train_balanced_rose,mtry = 308))
+    save(random_forest_fit_15_nodes, file = "../output/rf_train_15_nodes.RData")
+    save(time.rf.train.node15, file = "../output/rf_train_15_nodes_time.RData")
+    cat("15 node time", time.rf.train.node15)
+    # Train 20 nodes
+    time.rf.train.node20 <- system.time(random_forest_fit_20_nodes <-
+                                          random_forest_train_20(dat_train_balanced_rose,mtry = 308))
+    save(random_forest_fit_20_nodes, file = "../output/rf_train_20_nodes.RData")
+    save(time.rf.train.node20, file = "../output/rf_train_20_nodes_time.RData")
+    cat("20 node time", time.rf.train.node20)
+    # Train 25 nodes
+    time.rf.train.node25 <- system.time(random_forest_fit_25_nodes <-
+                                          random_forest_train_25(dat_train_balanced_rose,mtry = 308))
+    save(random_forest_fit_25_nodes, file = "../output/rf_train_25_nodes.RData")
+    save(time.rf.train.node25, file = "../output/rf_train_25_nodes_time.RData")
+    cat("25 node time", time.rf.train.node25)
+    # Train 30 nodes
+    time.rf.train.node30 <- system.time(random_forest_fit_30_nodes <-
+                                          random_forest_train_30(dat_train_balanced_rose,mtry = 308))
+    save(random_forest_fit_30_nodes, file = "../output/rf_train_30_nodes.RData")
+    save(time.rf.train.node30, file = "../output/rf_train_30_nodes_time.RData")
+    cat("30 node time", time.rf.train.node30)
+  } else {
+    load("../output/rf_train_500_trees.RData")
+    load("../output/rf_train_1000_trees.RData")
+    load("../output/rf_train_1500_trees.RData")
+    load("../output/rf_train_2000_trees.RData")
+    load("../output/rf_train_2500_trees.RData")
+    load("../output/rf_train_10_nodes.RData")
+    load("../output/rf_train_15_nodes.RData")
+    load("../output/rf_train_20_nodes.RData")
+    load("../output/rf_train_25_nodes.RData")
+    load("../output/rf_train_30_nodes.RData")
   }
-  #Test 500
-  random_forest_test_prep=NA
-  if(tune.random.forest){
-    load(file="../output/rf_train_500_trees.RData")
-    time.rf.test <- system.time(
-      random_forest_test_prep <- random_forest_test(
-      model = random_forest_fit_500,testset = dat_test)
-      )
-    random_forest_test_prep <- as.numeric(as.character(random_forest_test_prep))
-    accu_rf_test <- mean(random_forest_test_prep == dat_test$label)
-    random_forest_label<-round(random_forest_test_prep)
-    accu_rf <- sum(weight_test * (random_forest_label == label_test)) / sum(weight_test)
-    #prob_pred <- lable_pred
-    tpr.fpr <- WeightedROC(random_forest_test_prep, label_test, weight_test)
-    auc_rf <- WeightedAUC(tpr.fpr)
-    cat("The AUC of model after reweighting: RF", "is", auc_rf, ".\n")
-    cat("The accuracy of model: Random Forest on imbalanced testing data", "is", accu_rf_test*100, "%.\n")
-    cat("The accuracy of model: Random Forest on balanced testing data", "is", accu_rf*100, "%.\n")
-    cat("Time for training model Random Forest = ", time.rf.train[1], "s \n")
-    cat("Time for testing model Random Forest = ",time.rf.test[1], "s \n")
-    }
-  # The AUC of model after reweighting: RF is 0.5031999 .
-  # The accuracy of model: Random Forest on imbalanced testing data is 80.33333 %.
-  # The accuracy of model: Random Forest on balanced testing data is 50.31999 %.
-  # Time for training model Random Forest =  20.95 s 
-  # Time for testing model Random Forest =  0.09 s 
 
-  #Train 1000
-  if(tune.random.forest){
-    time.rf.train <- system.time(random_forest_fit_1000 <- random_forest_train_1000(dat_train_balanced_rose,mtry = 154))
-    save(random_forest_fit_1000, file = "../output/rf_train_1000_trees.RData")
-    }
-  #Test 1000
-  random_forest_test_prep=NA
-  if(tune.random.forest){
-    load(file="../output/rf_train_1000_trees.RData")
-    time.rf.test <- system.time(
-    random_forest_test_prep <- random_forest_test(
-      model = random_forest_fit_1000,testset = dat_test)
-    )
-    
-    random_forest_test_prep <- as.numeric(as.character(random_forest_test_prep))
-    accu_rf_test <- mean(random_forest_test_prep == dat_test$label)
-    random_forest_label<-round(random_forest_test_prep)
-    accu_rf <- sum(weight_test * (random_forest_label == label_test)) / sum(weight_test)
-    #prob_pred <- lable_pred
-    tpr.fpr <- WeightedROC(random_forest_test_prep, label_test, weight_test)
-    auc_rf <- WeightedAUC(tpr.fpr)
-    cat("The AUC of model after reweighting: RF", "is", auc_rf, ".\n")
-    cat("The accuracy of model: Random Forest on imbalanced testing data", "is", accu_rf_test*100, "%.\n")
-    cat("The accuracy of model: Random Forest on balanced testing data", "is", accu_rf*100, "%.\n")
-    cat("Time for training model Random Forest = ", time.rf.train[1], "s \n")
-    cat("Time for testing model Random Forest = ",time.rf.test[1], "s \n")
-    }
 
-  #Train 1500
-    if(tune.random.forest){
-      time.rf.train <- system.time(random_forest_fit_1500 <- random_forest_train_1500(dat_train_balanced_rose,mtry = 154))
-      save(random_forest_fit_1500, file = "../output/rf_train_1500_trees.RData")
-      }
-  #Test 1500
-  random_forest_test_prep=NA
-  if(tune.random.forest){
-    load(file="../output/rf_train_1500_trees.RData")
-    time.rf.test <- system.time(
-      random_forest_test_prep <- random_forest_test(
-        model = random_forest_fit_1500,testset = dat_test)
-      )
-    
-    random_forest_test_prep <- as.numeric(as.character(random_forest_test_prep))
-    accu_rf_test <- mean(random_forest_test_prep == dat_test$label)
-    random_forest_label<-round(random_forest_test_prep)
-    accu_rf <- sum(weight_test * (random_forest_label == label_test)) / sum(weight_test)
-    #prob_pred <- lable_pred
-    tpr.fpr <- WeightedROC(random_forest_test_prep, label_test, weight_test)
-    auc_rf <- WeightedAUC(tpr.fpr)
-    cat("The AUC of model after reweighting: RF", "is", auc_rf, ".\n")
-    cat("The accuracy of model: Random Forest on imbalanced testing data", "is", accu_rf_test*100, "%.\n")
-    cat("The accuracy of model: Random Forest on balanced testing data", "is", accu_rf*100, "%.\n")
-    cat("Time for training model Random Forest = ", time.rf.train[1], "s \n")
-    cat("Time for testing model Random Forest = ",time.rf.test[1], "s \n")
-    }
 
-  #Train 2000
-  if(tune.random.forest){
-    time.rf.train <- system.time(random_forest_fit_2000 <- random_forest_train_2000(dat_train_balanced_rose,mtry = 154))
-    save(random_forest_fit_2000, file = "../output/rf_train_2000_trees.RData")
-    }
-  #Test 2000
-  random_forest_test_prep=NA
-  if(tune.random.forest){
-    load(file="../output/rf_train_2000_trees.RData")
-    time.rf.test <- system.time(
-      random_forest_test_prep <- random_forest_test(
-        model = random_forest_fit_2000,testset = dat_test)
-      )
+  #Error rate of each hyperparameter:
 
-    random_forest_test_prep <- as.numeric(as.character(random_forest_test_prep))
-    accu_rf_test <- mean(random_forest_test_prep == dat_test$label)
-    random_forest_label<-round(random_forest_test_prep)
-    accu_rf <- sum(weight_test * (random_forest_label == label_test)) / sum(weight_test)
-    #prob_pred <- lable_pred
-    tpr.fpr <- WeightedROC(random_forest_test_prep, label_test, weight_test)
-    auc_rf <- WeightedAUC(tpr.fpr)
-    cat("The AUC of model after reweighting: RF", "is", auc_rf, ".\n")
-    cat("The accuracy of model: Random Forest on imbalanced testing data", "is", accu_rf_test*100, "%.\n")
-    cat("The accuracy of model: Random Forest on balanced testing data", "is", accu_rf*100, "%.\n")
-    cat("Time for training model Random Forest = ", time.rf.train[1], "s \n")
-    cat("Time for testing model Random Forest = ",time.rf.test[1], "s \n")
-    }
-  #Train 2500
-  if(tune.random.forest){
-    time.rf.train <- system.time(random_forest_fit_2500 <- random_forest_train_2500(dat_train_balanced_rose,mtry = 154))
-    save(random_forest_fit_2500, file = "../output/rf_train_2500_trees.RData")
-    }
-  #Test 2500
-  random_forest_test_prep=NA
-  if(tune.random.forest){
-    load(file="../output/rf_train_2500_trees.RData")
-    time.rf.test <- system.time(
-      random_forest_test_prep <- random_forest_test(
-        model = random_forest_fit_2500,testset = dat_test)
-      )
 
-    random_forest_test_prep <- as.numeric(as.character(random_forest_test_prep))
-    accu_rf_test <- mean(random_forest_test_prep == dat_test$label)
-    random_forest_label<-round(random_forest_test_prep)
-    accu_rf <- sum(weight_test * (random_forest_label == label_test)) / sum(weight_test)
-    #prob_pred <- lable_pred
-    tpr.fpr <- WeightedROC(random_forest_test_prep, label_test, weight_test)
-    auc_rf <- WeightedAUC(tpr.fpr)
-    cat("The AUC of model after reweighting: RF", "is", auc_rf, ".\n")
-    cat("The accuracy of model: Random Forest on imbalanced testing data", "is", accu_rf_test*100, "%.\n")
-    cat("The accuracy of model: Random Forest on balanced testing data", "is", accu_rf*100, "%.\n")
-    cat("Time for training model Random Forest = ", time.rf.train[1], "s \n")
-    cat("Time for testing model Random Forest = ",time.rf.test[1], "s \n")
-    }
+
+  # Evaluate each hyperparameter
+
+
+  # Predicted value from 500 trees' model:
+  rf_predicted_balanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_500_trees,
+                                                                   dat_test_balanced_rose)))
+  rf_predicted_imbalanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_500_trees, dat_test)))
+  # Evaluate 500 trees:
+  rf_accuracy_balanced <- mean(round(rf_predicted_balanced == dat_test_balanced_rose$label))
+  tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),dat_test_balanced_rose$label)
+  rf_AUC_balanced <- WeightedAUC(tpr.fpr.balanced)
+  rf_accuracy_imbalanced <- mean(round(rf_predicted_imbalanced == dat_test$label))
+  tpr.fpr.imbalanced <- WeightedROC(as.numeric(rf_predicted_imbalanced),dat_test$label)
+  rf_AUC_imbalanced <- WeightedAUC(tpr.fpr.imbalanced)
+
+  cat("Accuracy(balanced) 500", rf_accuracy_balanced*100,"%.\n")
+  cat("AUC(balanced) 500", rf_AUC_balanced,".\n")
+  cat("Accuracy(imbalanced) 500", rf_accuracy_imbalanced*100,"%.\n")
+  cat("AUC(imbalanced) 500",rf_AUC_imbalanced,".\n")
+
+
+  # Evaluation from 1000 trees' model:
+  rf_predicted_balanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_1000_trees,
+                                                                   dat_test_balanced_rose)))
+  rf_predicted_imbalanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_1000_trees, dat_test)))
+
+  rf_accuracy_balanced <- mean(round(rf_predicted_balanced == dat_test_balanced_rose$label))
+  tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),dat_test$label)
+  rf_AUC_balanced <- WeightedAUC(tpr.fpr.balanced)
+  rf_accuracy_imbalanced <- mean(round(rf_predicted_imbalanced == dat_test_balanced_rose$label))
+  tpr.fpr.imbalanced <- WeightedROC(as.numeric(rf_predicted_imbalanced),dat_test$label)
+  rf_AUC_imbalanced <- WeightedAUC(tpr.fpr.imbalanced)
+
+  cat("Accuracy(balanced) 1000", rf_accuracy_balanced*100,"%.\n")
+  cat("AUC(balanced) 1000", rf_AUC_balanced,".\n")
+  cat("Accuracy(imbalanced) 1000", rf_accuracy_imbalanced*100,"%.\n")
+  cat("AUC(imbalanced) 1000",rf_AUC_imbalanced,".\n")
+
+  # 1500 trees
+  rf_predicted_balanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_1500_trees,
+                                                                   dat_test_balanced_rose)))
+  rf_predicted_imbalanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_1500_trees, dat_test)))
+
+  rf_accuracy_balanced <- mean(round(rf_predicted_balanced == dat_test_balanced_rose$label))
+  tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),dat_test$label)
+  rf_AUC_balanced <- WeightedAUC(tpr.fpr.balanced)
+  rf_accuracy_imbalanced <- mean(round(rf_predicted_imbalanced == dat_test_balanced_rose$label))
+  tpr.fpr.imbalanced <- WeightedROC(as.numeric(rf_predicted_imbalanced),dat_test$label)
+  rf_AUC_imbalanced <- WeightedAUC(tpr.fpr.imbalanced)
+
+  cat("Accuracy(balanced) 1500", rf_accuracy_balanced*100,"%.\n")
+  cat("AUC(balanced) 1500", rf_AUC_balanced,".\n")
+  cat("Accuracy(imbalanced) 1500", rf_accuracy_imbalanced*100,"%.\n")
+  cat("AUC(imbalanced) 1500",rf_AUC_imbalanced,".\n")
+
+  #2000 trees
+  rf_predicted_balanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_2000_trees,
+                                                                   dat_test_balanced_rose)))
+  rf_predicted_imbalanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_2000_trees, dat_test)))
+
+  rf_accuracy_balanced <- mean(round(rf_predicted_balanced == dat_test_balanced_rose$label))
+  tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),dat_test$label)
+  rf_AUC_balanced <- WeightedAUC(tpr.fpr.balanced)
+  rf_accuracy_imbalanced <- mean(round(rf_predicted_imbalanced == dat_test_balanced_rose$label))
+  tpr.fpr.imbalanced <- WeightedROC(as.numeric(rf_predicted_imbalanced),dat_test$label)
+  rf_AUC_imbalanced <- WeightedAUC(tpr.fpr.imbalanced)
+
+  cat("Accuracy(balanced) 2000", rf_accuracy_balanced*100,"%.\n")
+  cat("AUC(balanced) 2000", rf_AUC_balanced,".\n")
+  cat("Accuracy(imbalanced) 2000", rf_accuracy_imbalanced*100,"%.\n")
+  cat("AUC(imbalanced) 2000",rf_AUC_imbalanced,".\n")
+
+  # 2500 trees
+  rf_predicted_balanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_2500_trees,
+                                                                   dat_test_balanced_rose)))
+  rf_predicted_imbalanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_2500_trees, dat_test)))
+
+  rf_accuracy_balanced <- mean(round(rf_predicted_balanced == dat_test_balanced_rose$label))
+  tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),dat_test$label)
+  rf_AUC_balanced <- WeightedAUC(tpr.fpr.balanced)
+  rf_accuracy_imbalanced <- mean(round(rf_predicted_imbalanced == dat_test_balanced_rose$label))
+  tpr.fpr.imbalanced <- WeightedROC(as.numeric(rf_predicted_imbalanced),dat_test$label)
+  rf_AUC_imbalanced <- WeightedAUC(tpr.fpr.imbalanced)
+
+  cat("Accuracy(balanced) 2500", rf_accuracy_balanced*100,"%.\n")
+  cat("AUC(balanced) 2500", rf_AUC_balanced,".\n")
+  cat("Accuracy(imbalanced) 2500", rf_accuracy_imbalanced*100,"%.\n")
+  cat("AUC(imbalanced) 2500",rf_AUC_imbalanced,".\n")
+
+  # 10 nodes
+  rf_predicted_balanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_10_nodes,
+                                                                   dat_test_balanced_rose)))
+  rf_predicted_imbalanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_10_nodes, dat_test)))
+
+  rf_accuracy_balanced <- mean(round(rf_predicted_balanced == dat_test_balanced_rose$label))
+  tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),dat_test$label)
+  rf_AUC_balanced <- WeightedAUC(tpr.fpr.balanced)
+  rf_accuracy_imbalanced <- mean(round(rf_predicted_imbalanced == dat_test_balanced_rose$label))
+  tpr.fpr.imbalanced <- WeightedROC(as.numeric(rf_predicted_imbalanced),dat_test$label)
+  rf_AUC_imbalanced <- WeightedAUC(tpr.fpr.imbalanced)
+
+  cat("Accuracy(balanced) 10", rf_accuracy_balanced*100,"%.\n")
+  cat("AUC(balanced) 10", rf_AUC_balanced,".\n")
+  cat("Accuracy(imbalanced) 10", rf_accuracy_imbalanced*100,"%.\n")
+  cat("AUC(imbalanced) 10",rf_AUC_imbalanced,".\n")
+
+  # 15 nodes
+  rf_predicted_balanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_15_nodes,
+                                                                   dat_test_balanced_rose)))
+  rf_predicted_imbalanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_15_nodes, dat_test)))
+
+  rf_accuracy_balanced <- mean(round(rf_predicted_balanced == dat_test_balanced_rose$label))
+  tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),dat_test$label)
+  rf_AUC_balanced <- WeightedAUC(tpr.fpr.balanced)
+  rf_accuracy_imbalanced <- mean(round(rf_predicted_imbalanced == dat_test_balanced_rose$label))
+  tpr.fpr.imbalanced <- WeightedROC(as.numeric(rf_predicted_imbalanced),dat_test$label)
+  rf_AUC_imbalanced <- WeightedAUC(tpr.fpr.imbalanced)
+
+  cat("Accuracy(balanced) 15", rf_accuracy_balanced*100,"%.\n")
+  cat("AUC(balanced) 15", rf_AUC_balanced,".\n")
+  cat("Accuracy(imbalanced) 15", rf_accuracy_imbalanced*100,"%.\n")
+  cat("AUC(imbalanced) 15",rf_AUC_imbalanced,".\n")
+
+  # 20 nodes
+  rf_predicted_balanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_20_nodes,
+                                                                   dat_test_balanced_rose)))
+  rf_predicted_imbalanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_20_nodes, dat_test)))
+
+  rf_accuracy_balanced <- mean(round(rf_predicted_balanced == dat_test_balanced_rose$label))
+  tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),dat_test$label)
+  rf_AUC_balanced <- WeightedAUC(tpr.fpr.balanced)
+  rf_accuracy_imbalanced <- mean(round(rf_predicted_imbalanced == dat_test_balanced_rose$label))
+  tpr.fpr.imbalanced <- WeightedROC(as.numeric(rf_predicted_imbalanced),dat_test$label)
+  rf_AUC_imbalanced <- WeightedAUC(tpr.fpr.imbalanced)
+
+  cat("Accuracy(balanced) 20", rf_accuracy_balanced*100,"%.\n")
+  cat("AUC(balanced) 20", rf_AUC_balanced,".\n")
+  cat("Accuracy(imbalanced) 20", rf_accuracy_imbalanced*100,"%.\n")
+  cat("AUC(imbalanced) 20",rf_AUC_imbalanced,".\n")
+
+  # 25 nodes
+  rf_predicted_balanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_25_nodes,
+                                                                   dat_test_balanced_rose)))
+  rf_predicted_imbalanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_25_nodes, dat_test)))
+
+  rf_accuracy_balanced <- mean(round(rf_predicted_balanced == dat_test_balanced_rose$label))
+  tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),dat_test$label)
+  rf_AUC_balanced <- WeightedAUC(tpr.fpr.balanced)
+  rf_accuracy_imbalanced <- mean(round(rf_predicted_imbalanced == dat_test_balanced_rose$label))
+  tpr.fpr.imbalanced <- WeightedROC(as.numeric(rf_predicted_imbalanced),dat_test$label)
+  rf_AUC_imbalanced <- WeightedAUC(tpr.fpr.imbalanced)
+
+  cat("Accuracy(balanced) 25", rf_accuracy_balanced*100,"%.\n")
+  cat("AUC(balanced) 25", rf_AUC_balanced,".\n")
+  cat("Accuracy(imbalanced) 25", rf_accuracy_imbalanced*100,"%.\n")
+  cat("AUC(imbalanced) 25",rf_AUC_imbalanced,".\n")
+
+  # 30 nodes
+  rf_predicted_balanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_30_nodes,
+                                                                   dat_test_balanced_rose)))
+  rf_predicted_imbalanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_30_nodes, dat_test)))
+
+  rf_accuracy_balanced <- mean(round(rf_predicted_balanced == dat_test_balanced_rose$label))
+  tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),dat_test$label)
+  rf_AUC_balanced <- WeightedAUC(tpr.fpr.balanced)
+  rf_accuracy_imbalanced <- mean(round(rf_predicted_imbalanced == dat_test_balanced_rose$label))
+  tpr.fpr.imbalanced <- WeightedROC(as.numeric(rf_predicted_imbalanced),dat_test$label)
+  rf_AUC_imbalanced <- WeightedAUC(tpr.fpr.imbalanced)
+
+  cat("Accuracy(balanced) 30", rf_accuracy_balanced*100,"%.\n")
+  cat("AUC(balanced) 30", rf_AUC_balanced,".\n")
+  cat("Accuracy(imbalanced) 30", rf_accuracy_imbalanced*100,"%.\n")
+  cat("AUC(imbalanced) 30",rf_AUC_imbalanced,".\n")
 }
-
 ```
 
-Testing Result:
-When trees = 500:
-The AUC of model after reweighting: RF is 0.5116745 .
-The accuracy of model: Random Forest on imbalanced testing data is 80.66667 %.
-The accuracy of model: Random Forest on balanced testing data is 51.16745 %.
-Time for training model Random Forest =  713.63 s 
-Time for testing model Random Forest =  0.19 s 
-
-When trees = 1000
-The AUC of model after reweighting: RF is 0.5201491 .
-The accuracy of model: Random Forest on imbalanced testing data is 81 %.
-The accuracy of model: Random Forest on balanced testing data is 52.01491 %.
-Time for training model Random Forest =  1367.94 s 
-Time for testing model Random Forest =  0.28 s 
-
-When trees = 1500
-The AUC of model after reweighting: RF is 0.5201491 .
-The accuracy of model: Random Forest on imbalanced testing data is 81 %.
-The accuracy of model: Random Forest on balanced testing data is 52.01491 %.
-Time for training model Random Forest =  2077.56 s 
-Time for testing model Random Forest =  0.36 s 
-
-When trees = 2000
-The AUC of model after reweighting: RF is 0.5201491 .
-The accuracy of model: Random Forest on imbalanced testing data is 81 %.
-The accuracy of model: Random Forest on balanced testing data is 52.01491 %.
-Time for training model Random Forest =  3142.77 s 
-Time for testing model Random Forest =  0.56 s 
-
-When trees = 2500
-The AUC of model after reweighting: RF is 0.5159118 .
-The accuracy of model: Random Forest on imbalanced testing data is 80.83333 %.
-The accuracy of model: Random Forest on balanced testing data is 51.59118 %.
-Time for training model Random Forest =  3963.67 s 
-Time for testing model Random Forest =  0.62 s 
-
-**Therefore, we should use trees = 1000.**
+**15 Nodes and 2500 trees is the best.**
 
 * Train Random Forest with Tuned Parameters
 
 ```{r}
 if(run.rf){
-  source("../lib/random_forest.R")
   if(train.random.forest){
-    time.rf.train <- system.time(random_forest_fit <- random_forest_train(dat_train_balanced_rose,mtry = 154))
-    save(random_forest_fit, file = "../output/random_forest_train.RData")
-    save(time.rf.train,file = "../output/random_forest_train_time.RData")
-  }else{
-    load(file = "../output/random_forest_train_time.RData")
-    load(file = "../output/random_forest_train.RData")
-  }
-}
-```
-
-* Test Random Forest with Tuned Parameters
-
-```{r}
-if(run.rf){
-  random_forest_test_prep=NA
-  if(run.test){
-    load(file="../output/random_forest_train.RData")
-    time.rf.test <- system.time(
-      random_forest_test_prep <- random_forest_test(
-        model = random_forest_fit,testset = dat_test)
-    )
-  }
-  ## reweight the test data to represent a balanced label distribution
-  if (run.gbm){
-    accu <- mean(dat_test$label == label_pred)
-    cat("The accuracy of GBM baseline model is", mean(dat_test$label == label_pred)*100, "%.\n")
+    time.rf.train.final.balanced <- system.time(random_forest_fit_final_balanced <-
+                                                  random_forest_train(dat_train_balanced_rose, 
+                                                                      mtry = 308,
+                                                                      tree_number = 2000, 
+                                                                      node_size = 15))
+    save(random_forest_fit_final_balanced, file = "../output/rf_train_final_balanced_old_feature.RData")
+    save(time.rf.train.final.balanced, file = "../output/rf_train_final_time_balanced_old_feature.RData")
+    time.rf.train.final.imbalanced <- system.time(random_forest_fit_final_imbalanced <-
+                                                  random_forest_train(dat_train, 
+                                                                      mtry = 308, 
+                                                                      tree_number = 1000,
+                                                                      node_size = 15))
+    save(time.rf.train.final.imbalanced, file = "../output/rf_train_final_time_imbalanced_old_feature.RData")
+    save(random_forest_fit_final_imbalanced, file = "../output/rf_train_final_imbalanced_old_feature.RData")
   } else {
-    label_test <- as.integer(dat_test$label)
-    weight_test <- rep(NA, length(label_test))
-    for (v in unique(label_test)){
-      weight_test[label_test == v] = 0.5 * length(label_test) / length(label_test[label_test == v])
-    }
-  
-    accu <- sum(weight_test * (label_pred == label_test)) / sum(weight_test)
-    tpr.fpr <- WeightedROC(prob_pred, label_test, weight_test)
-    auc <- WeightedAUC(tpr.fpr)
-  
-    cat("The accuracy of model:", model_labels[which.min(res_cv$mean_error)], "is", accu*100, "%.\n")
-    cat("The AUC of model:", model_labels[which.min(res_cv$mean_error)], "is", auc, ".\n")
+    load("../output/rf_train_final_balanced_old_feature.RData")
+    load("../output/rf_train_final_time_balanced_old_feature.RData")
+    load("../output/rf_train_final_time_imbalanced_old_feature.RData")
+    load("../output/rf_train_final_imbalanced_old_feature.RData")
   }
-  random_forest_test_prep <- as.numeric(as.character(random_forest_test_prep))
-  accu_rf_test <- mean(random_forest_test_prep == dat_test$label)
 }
 ```
 
-* Calculate weightedAUC on Testing Set
+* Test and Evaluate Random Forest with Tuned Parameters
 
 ```{r}
 if(run.rf){
-  random_forest_label<-round(random_forest_test_prep)
-  #prob_pred <- lable_pred
-  tpr.fpr <- WeightedROC(random_forest_test_prep, label_test, weight_test)
-  auc_rf <- WeightedAUC(tpr.fpr)
+  # Balanced:
+  if(test.random.forest){
+  time.rf.test.final.balanced <- system.time(
+    rf_predicted_balanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_final_balanced,
+                                                                     dat_test_balanced_rose))))
+  rf_accuracy_balanced <- mean(round(rf_predicted_balanced == dat_test_balanced_rose$label))
+  tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),dat_test_balanced_rose$label)
+  rf_AUC_balanced <- WeightedAUC(tpr.fpr.balanced)
+
+  cat("AUC(balanced): ", rf_AUC_balanced,".\n")
+  cat("Accuracy(balanced)", rf_accuracy_balanced*100,"%.\n")
+  cat("Training time: ", time.rf.train.final.balanced[1], "s.\n")
+  cat("Testing time: ", time.rf.test.final.balanced[1], "s.\n")
+
+  # Imbalanced:
+  time.rf.test.final.imbalanced <- system.time(
+    rf_predicted_imbalanced <-as.numeric(as.vector(random_forest_test(random_forest_fit_final_imbalanced,
+                                                                      dat_test))))
+  rf_accuracy_imbalanced <- mean(round(rf_predicted_imbalanced == dat_test$label))
+  tpr.fpr.imbalanced <- WeightedROC(as.numeric(rf_predicted_imbalanced),dat_test$label)
+  rf_AUC_imbalanced <- WeightedAUC(tpr.fpr.imbalanced)
+
+  cat("AUC(imbalanced): ", rf_AUC_imbalanced,".\n")
+  cat("Accuracy(imbalanced)", rf_accuracy_imbalanced*100,"%.\n")
+  cat("Training time: ", time.rf.train.final.imbalanced[1], "s.\n")
+  cat("Testing time: ", time.rf.test.final.imbalanced[1], "s.\n")
+  }
 }
-```
-
-* Summary of Random Forest
-
-```{r}
-if(run.rf){
-  cat("The AUC of model after reweighting: RF", "is", auc_rf, ".\n")
-  cat("The accuracy of model: Random Forest on testing data", "is", accu_rf_test*100, "%.\n")
-  cat("Time for training model Random Forest = ", time.rf.train[1], "s \n")
-  cat("Time for testing model Random Forest = ",time.rf.test[1], "s \n")
-  #label_test
-
-  cat("The accuracy of model:", model_labels[which.min(res_cv$mean_error)], "is", accu*100, "%.\n")
-  cat("The AUC of model:", model_labels[which.min(res_cv$mean_error)], "is", auc, ".\n")
-}
-```
-
-* Summarize Running Time
-
-Prediction performance matters, so does the running times for constructing features and for training the model, especially when the computation resource is limited. 
-
-```{r}
-# cat("Time for constructing training features=", tm_feature_train[1], "s \n")
-# cat("Time for constructing testing features=", tm_feature_test[1], "s \n")
-# cat("Time for training model=", tm_train[1], "s \n") 
-# cat("Time for testing model=", tm_test[1], "s \n")
 ```
 
 --------THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL.----------
