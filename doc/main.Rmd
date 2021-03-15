@@ -157,8 +157,8 @@ run.test <- TRUE # run evaluation on an independent test set
 run.feature.test <- TRUE # process features for test set
 
 # gbm
-run.gbm.train <- FALSE # gbm(imroved) is the chosen advanced model
-run.gbm.test <- FALSE # gbm(imroved) is the chosen advanced model
+run.gbm.train <- TRUE # gbm(imroved) is the chosen advanced model
+run.gbm.test <- TRUE # gbm(imroved) is the chosen advanced model
 gbm.numtrees <- 1000 #number of trees to use in gbm
 
 #features options
@@ -346,8 +346,8 @@ if(run.gbm.test){
 show gbm accuracy and AUC
 ```{r}
 if (run.gbm){
-  gbm_accu <- mean(dat_test$label == label_pred_baseline)
-  gbm.auc <- WeightedROC(as.numeric(label_pred_baseline), dat_test$label)
+  gbm_accu <- mean(gbm_dat_test$label == label_pred_baseline)
+  gbm.auc <- WeightedROC(as.numeric(label_pred_baseline), gbm_dat_test$label)
   gbm_auc = WeightedAUC(gbm.auc)
   cat("Time for constructing gbm training features=", gbm_tm_feature_train[1], "s \n")
   cat("Time for constructing gbm testing features=", gbm_tm_feature_test[1], "s \n")
