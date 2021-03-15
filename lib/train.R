@@ -63,10 +63,8 @@ train_gbm <- function(features, s, K = 5, n=100, w = NULL){
                 verbose = TRUE)
     
   } else {
-    features$label <- as.factor(features$label)
-    trainSplit <- SMOTE(label ~ ., features, perc.over = 100, perc.under=200)
     
-    model<- gbm(label~. ,data = trainSplit,
+    model<- gbm(label~. ,data = features,
                 distribution = "multinomial", 
                 n.trees = n,
                 shrinkage = s,
