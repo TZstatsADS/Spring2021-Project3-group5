@@ -123,10 +123,10 @@ needs.balanced <- TRUE # balance data for model fitting
 model.selection <- TRUE # perform model selection on svm models
 run.balanced.data <- FALSE # Whether or not balance the data
 # Random Forest Model Tune and Train
-train.random.forest <- TRUE # Train Random Forest Model
+train.random.forest <- FALSE # Train Random Forest Model
 test.random.forest <- TRUE # Test Random Forest Model
 tune.random.forest <- FALSE # Tune Random Forest Model
-test.tune.rf.models <- TRUE # Test the tuning result of Random Forest Models
+test.tune.rf.models <- FALSE # Test the tuning result of Random Forest Models
 ```
 
 # Setting Data
@@ -220,6 +220,7 @@ dat_test_balanced_rose <- dat_test_balanced_rose # All the BALANCED test data (U
 # Performance of the final greatest model (tuned)
 ## Training and Evaluating the greatest RF model
 ```{r}
+source("../lib/random_forest.R")
 if(train.random.forest){
   time.rf.train.final.balanced <- system.time(random_forest_fit_final_balanced <- random_forest_train(dat_train_balanced_rose, mtry = 308, tree_number = 500, node_size = 10))
   save(random_forest_fit_final_balanced, file = "../output/rf_train_final_balanced.RData")
@@ -352,7 +353,7 @@ cat("Testing time (imbalanced) for Random Forest with old feature: ", time.rf.te
 
 
 # Appendix: Tuning the Model
-## Tune mtry (balanced Random Forest)
+## Tune mtry
 ```{r}
 source("../lib/random_forest.R")
 source("../lib/feature.R")
