@@ -859,7 +859,7 @@ if(run.ridge){
   if (run.cv){
     set.seed(2020)
     dat_train_rebalanced <- ROSE(label ~ ., data = dat_train, seed=2020)$data
-    feature_train = as.matrix(dat_train_rebalanced[, -6007])
+    feature_train = as.matrix(dat_train_rebalanced[,-dim(dat_train_rebalanced)[2]])
     label_train = as.integer(dat_train_rebalanced$label)
     ridge_model = cv.glmnet(x=feature_train, y=label_train, alpha=alpha, nfolds=K, lambda=lambda)
     opt_lambda = ridge_model$lambda.min
@@ -877,7 +877,7 @@ if(run.ridge){
   tm_ridge_test = NA
   if(run.test){
     load("../output/ridge_cv_model.RData")
-    feature_test <- as.matrix(dat_test[, -6007])
+    feature_test <- as.matrix(dat_test[, -dim(dat_test)[2]])
     tm_ridge_test <- system.time(label_pred<-as.integer(ridge_test(model=ridge_cv_model, features=feature_test, pred.type = 'class')))
     save(tm_ridge_test, file="../output/ridge_test_time.RData")
   } else{
@@ -902,7 +902,7 @@ if(run.ridge){
 ```{r}
 if(run.ridge){
   load("../output/ridge_cv_model.RData")
-  feature_test <- as.matrix(dat_test[, -6007])
+  feature_test <- as.matrix(dat_test[, -dim(dat_test)[2]])
   label_pred = as.integer(predict(ridge_cv_model, s=opt_lambda, newx=feature_test, type='class'))
   label_test = as.integer(dat_test$label)
   ridge_accuracy = mean(round(label_test== label_pred))
