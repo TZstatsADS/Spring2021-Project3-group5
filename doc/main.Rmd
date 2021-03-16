@@ -148,18 +148,22 @@ In this chunk, we have a set of controls for the evaluation experiments.
 + (T/F) run evaluation on the test set
 
 ```{r exp_setup}
+run.presentation.day <- TRUE #presentation day flag. No training. Generate a csv file
 run.cv <- TRUE # run cross-validation on the training set
-sample.reweight <- FALSE # run sample reweighting in model training
+sample.reweight <- TRUE # run sample reweighting in model training
 K <- 5  # number of CV folds
 run.feature.train <- TRUE # process features for training set
 run.test <- TRUE # run evaluation on an independent test set
 run.feature.test <- TRUE # process features for test set
 
 # gbm
-run.gbm <- FALSE # gbm(imroved) is the chosen advanced model
+run.gbm.train <- TRUE # gbm(imroved) is the chosen advanced model
+run.gbm.test <- TRUE # gbm(imroved) is the chosen advanced model
 gbm.numtrees <- 1000 #number of trees to use in gbm
+
+#features options
 run.poly.feature <- TRUE # process poly features
-run.add.poly.feature <- TRUE # and poly features to dist matrix
+run.add.poly.feature <- TRUE # and poly features to features matrix
 
 # svm
 run.svm <- FALSE # svm is the chosen advanced model
@@ -208,6 +212,13 @@ readMat.matrix <- function(index){
      return(round(readMat(paste0(train_pt_dir, sprintf("%04d", index), ".mat"))[[1]],0))
 }
 
+if (run.presentation.day){
+  test_idx <- c(1:n_files) #sample(n_files, n_files, replace = F)
+  run.gbm.train <- FALSE
+  run.feature.train <- FALSE
+  run.gbm.test <- TRUE
+}
+
 #load fiducial points
 fiducial_pt_list <- lapply(1:n_files, readMat.matrix)
 save(fiducial_pt_list, file="../output/fiducial_pt_list.RData")
@@ -233,19 +244,27 @@ and the midpoint of the upper lip(52).  For example, the distance of an happy fa
 ```{r feature}
 source("../lib/feature.R")
 tm_feature_train <- NA
+gbm_tm_feature_train <- NA
 if(run.feature.train){
   tm_feature_train <- system.time(dat_train<-feature(fiducial_pt_list,train_idx, run.poly.feature, run.add.poly.feature))
+  gbm_tm_feature_train <- system.time(gbm_dat_train<-feature(fiducial_pt_list,train_idx, FALSE, FALSE))
+  save(gbm_dat_train, file="../output/gbm_feature_train.RData")
   save(dat_train, file="../output/feature_train.RData")
 }else{
   load(file="../output/feature_train.RData")
+  load(file="../output/gbm_feature_train.RData")
 }
 
 tm_feature_test <- NA
+gbm_tm_feature_test <- NA
 if(run.feature.test){
   tm_feature_test <- system.time(dat_test <- feature(fiducial_pt_list, test_idx, run.poly.feature, run.add.poly.feature))
+  gbm_tm_feature_test <- system.time(gbm_dat_test <- feature(fiducial_pt_list, test_idx, FALSE, FALSE))
+  save(gbm_dat_test, file="../output/gbm_feature_test.RData")
   save(dat_test, file="../output/feature_test.RData")
 }else{
   load(file="../output/feature_test.RData")
+  load(file="../output/gbm_feature_test.RData")
 }
 ```
 
@@ -284,20 +303,28 @@ source("../lib/test.R")
 * Model Training
 
 ```{r}
-if (run.gbm){
+if (run.gbm.train){
   if (sample.reweight){
-    tm_train <- system.time(fit_train <- train_gbm(dat_train, s=0.1, K=K, n=gbm.numtrees,w = weight_train))
+    
+    gbm_dat_train$label <- as.factor(gbm_dat_train$label)
+    dat_train_balanced_gbm <- SMOTE(label ~ ., gbm_dat_train, perc.over = 100, perc.under=200)
+    #save(dat_train_balanced_rose, file="../output/balanced_data.RData")
+    table(dat_train_balanced_gbm$label)
+    
+    gbm_tm_train <- system.time(gbm_train <- train_gbm(dat_train_balanced_gbm, s=0.1, K=K, n=gbm.numtrees,w = NULL))
+    
   } else {
-    tm_train <- system.time(fit_train <- train_gbm(dat_train, s=0.1, K=K, n=gbm.numtrees,w = NULL))
+    gbm_tm_train <- system.time(gbm_train <- train_gbm(gbm_dat_train, s=0.1, K=K, n=gbm.numtrees,w = NULL))
   }
   
   # plot the performance
-  best.iter.oob <- gbm.perf(fit_train,method="OOB")  # returns out-of-bag estimated best number of trees
+  best.iter.oob <- gbm.perf(gbm_train,method="OOB")  # returns out-of-bag estimated best number of trees
   print(best.iter.oob)
-  best.iter.cv <- gbm.perf(fit_train,method="cv")   # returns K-fold cv estimate of best number of trees
+  best.iter.cv <- gbm.perf(gbm_train,method="cv")   # returns K-fold cv estimate of best number of trees
   print(best.iter.cv)
   
-  save(fit_train, file="../output/fit_train.RData")
+  saveRDS(gbm_train, "../output/gbm_model.rds")
+  save(gbm_tm_train, best.iter.cv, file="../output/gbm_outputs.RData")
 }
 
 ```
@@ -305,23 +332,32 @@ if (run.gbm){
 * Evaluation on Test Set
 
 ```{r}
-if(run.gbm){
-  tm_test = NA
-  feature_test <- as.matrix(dat_test[, 1:ncol(dat_test)-1])
-  if(run.test){
-    load(file="../output/fit_train.RData")
-    tm_test <- system.time(prob_pred<-test_gbm(fit_train,as.data.frame(feature_test),n=best.iter.cv,pred.type = 'response'))
-    
-    label_pred <- colnames(prob_pred)[apply(prob_pred, 1, which.max)]
-    
-  } else {
-    tm_test <- system.time({label_pred <- as.integer(test(fit_train, feature_test, pred.type = 'class')); 
-                            prob_pred <- test(fit_train, feature_test, pred.type = 'response')})  
-  }
+if(run.gbm.test){
+  gbm_tm_test = NA
+  feature_test <- as.matrix(gbm_dat_test[, 1:ncol(gbm_dat_test)-1])
+  
+  gbm_train <- readRDS("../output/gbm_model.rds")
+  gbm_tm_test <- system.time(prob_pred_baseline<-test_gbm(gbm_train,as.data.frame(feature_test),n=best.iter.cv,pred.type = 'response'))
+  
+  label_pred_baseline <- colnames(prob_pred_baseline)[apply(prob_pred_baseline, 1, which.max)]
 }
 ```
 
-
+show gbm accuracy and AUC
+```{r}
+if (run.gbm.test){
+  load(file="../output/gbm_outputs.RData")
+  gbm_accu <- mean(gbm_dat_test$label == label_pred_baseline)
+  gbm.auc <- WeightedROC(as.numeric(label_pred_baseline), gbm_dat_test$label)
+  gbm_auc = WeightedAUC(gbm.auc)
+  cat("Time for constructing gbm training features=", gbm_tm_feature_train[1], "s \n")
+  cat("Time for constructing gbm testing features=", gbm_tm_feature_test[1], "s \n")
+  cat("The AUC of gbm model is", gbm_auc, ".\n")
+  cat("The accuracy of GBM baseline model is", gbm_accu*100, "%.\n")
+  cat("Time for training gbm model=", gbm_tm_train[1], "s \n") 
+  cat("Time for testing model=", gbm_tm_test[1], "s \n")
+}
+```
 --------THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL.----------
 
 
@@ -1046,6 +1082,24 @@ if(run.pca_lda){
 }
 ```
 
+* Generate a csv on presentation day
+
+```{r generate csv}
+if (run.presentation.day){
+  csvfileoutput<-"../output/label_prediction.csv"
+  #Advanced<-
+  Baseline<-label_pred_baseline
+  Index<-test_idx
+  csvdata <- data.frame(Index, Baseline)
+  
+  write.csv(csvdata,csvfileoutput, row.names=FALSE,quote = FALSE)
+  
+  
+  #presentation_day_gbm_accu <- mean(info$label == label_pred_baseline)
+  #cat("The accuracy of GBM baseline model is", presentation_day_gbm_accu*100, "%.\n")
+  
+}
+```
 
 ### Reference
 - Du, S., Tao, Y., & Martinez, A. M. (2014). Compound facial expressions of emotion. Proceedings of the National Academy of Sciences, 111(15), E1454-E1462.
