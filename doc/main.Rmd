@@ -376,7 +376,7 @@ if (run.gbm.test){
 
 # Advanced Model 2: Random Forest
 
-The second advanced model is random forest. Here we use the datasets that are extracted by new feature functions. We used two models trained by both imbalanced and balanced dataset. We used ROSE function to balance bothh training and testing data. For tuning the model, we set mtry = 308, tree number = 500, and node size = 10 for the RF model using balanced data, and we set mtry = 308, tree number = 1500, and node size = 30 for the RF model using imbalanced data. The evaluation of the model is shown at the end of this section.  
+The second advanced model is random forest. Here we use the datasets that are extracted by new feature functions. We used two models trained by both imbalanced and balanced dataset. We used SMOTE function to balance both training and testing data. For tuning the model, we set mtry = 308, tree number = 500, and node size = 10 for the RF model using balanced data, and we set mtry = 308, tree number = 1500, and node size = 30 for the RF model using imbalanced data. The evaluation of the model is shown at the end of this section.  
 
 The tuning part is in a separate file named "appendix_tune_rf.rmd" in doc folder. Please feel free to check that to see the tuning process.  
 
