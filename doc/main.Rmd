@@ -333,6 +333,7 @@ if (run.gbm.train){
 
 ```{r}
 if(run.gbm.test){
+  load(file="../output/gbm_outputs.RData")
   gbm_tm_test = NA
   feature_test <- as.matrix(gbm_dat_test[, 1:ncol(gbm_dat_test)-1])
   
