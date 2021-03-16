@@ -113,9 +113,9 @@ run.cv <- FALSE # run cross-validation on the training set
 sample.reweight <- FALSE # run sample reweighting in model training
 K <- 5  # number of CV folds
 gbm.numtrees <- 1000 #number of trees to use in gbm
-run.feature.train <- FALSE # process features for training set
+run.feature.train <- TRUE # process features for training set
 run.test <- TRUE # run evaluation on an independent test set
-run.feature.test <- FALSE # process features for test set
+run.feature.test <- TRUE # process features for test set
 run.poly.feature <- TRUE # process poly features
 run.add.poly.feature <- TRUE # and poly features to dist matrix
 run.gbm <- F
