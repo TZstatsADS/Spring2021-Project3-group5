@@ -914,7 +914,8 @@ if(run.ridge){
   tm_ridge_test = NA
   if(run.test){
     load("../output/ridge_cv_model.RData")
-    feature_test <- as.matrix(dat_test[, -dim(dat_test)[2]])
+    dat_test_rebalanced <- ROSE(label ~ ., data = dat_test, seed=2020)$data
+    feature_test <- as.matrix(dat_test_rebalanced[, -dim(dat_test_rebalanced)[2]])
     tm_ridge_test <- system.time(label_pred<-as.integer(ridge_test(model=ridge_cv_model, features=feature_test, pred.type = 'class')))
     save(tm_ridge_test, file="../output/ridge_test_time.RData")
   } else{
@@ -939,9 +940,10 @@ if(run.ridge){
 ```{r}
 if(run.ridge){
   load("../output/ridge_cv_model.RData")
-  feature_test <- as.matrix(dat_test[, -dim(dat_test)[2]])
+  dat_test_rebalanced <- ROSE(label ~ ., data = dat_test, seed=2020)$data
+  feature_test <- as.matrix(dat_test_rebalanced[, -dim(dat_test_rebalanced)[2]])
   label_pred = as.integer(predict(ridge_cv_model, s=opt_lambda, newx=feature_test, type='class'))
-  label_test = as.integer(dat_test$label)
+  label_test = as.integer(dat_test_rebalanced$label)
   ridge_accuracy = mean(round(label_test== label_pred))
   cat("The accuracy of the ridge model is", ridge_accuracy*100, "%.\n")
   ridge_AUC = auc(roc(label_pred,label_test))
