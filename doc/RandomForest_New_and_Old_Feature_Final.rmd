@@ -4,6 +4,7 @@ author: "Jingbin Cao, jc5514"
 date: "3/13/2021"
 output: pdf_document
 ---
+This file is not the latest. In this document, I use ROSE to balance the data. However, ROSE is very bad in this case. The main.Rmd file has the latest version, using SMOTE to balance the training data.
 # Getting all packages
 ```{r message=FALSE, warning=FALSE}
 if(!require("EBImage")){

@@ -73,6 +73,9 @@ if(!require("prediction")){
 if(!require("pROC")){
   install.packages("pROC")
 }
+if(!require("DMwR")){
+  install.packages("DMwR")
+}
 
 library(R.matlab)
 library(readxl)
@@ -381,16 +384,19 @@ We also trained random forest model with the datasets that are extracted by old 
 ```{r}
 if(run.rf){
 #balanced data
-dat_train_balanced_rose<-ROSE(label~., dat_train,seed=2020)$data
-dat_test_balanced_rose <- ROSE(label~., dat_test, seed=2020)$data
-
+# dat_train_balanced_rose<-ROSE(label~., dat_train,seed=2020)$data (ROSE balancing method is suck in this case)
+# dat_test_balanced_rose <- ROSE(label~., dat_test, seed=2020)$data
+rf_dat_train <- dat_train
+rf_dat_test <- dat_test
+rf_dat_train$label <- as.factor(rf_dat_train$label)
+rf_dat_test$label <- as.numeric(rf_dat_test$label)
+dat_train_balanced_SMOTE <- SMOTE(label ~ ., rf_dat_train, perc.over = 100, perc.under=200)
 
 ## Training RF
-
 source("../lib/random_forest.R")
 if(train.rf){
   # Train RF by balanced data
-  time.rf.train.final.balanced <- system.time(random_forest_fit_final_balanced <- random_forest_train(dat_train_balanced_rose, mtry = 308, tree_number = 500, node_size = 10))
+  time.rf.train.final.balanced <- system.time(random_forest_fit_final_balanced <- random_forest_train(dat_train_balanced_SMOTE, mtry = 308, tree_number = 500, node_size = 10))
   save(random_forest_fit_final_balanced, file = "../output/rf_train_final_balanced.RData")
   save(time.rf.train.final.balanced, file = "../output/rf_train_final_time_balanced.RData")
   # Train RF by imbalanced data
@@ -406,9 +412,9 @@ if(train.rf){
 # Evaluation:
 # Balanced:
 if(test.rf){
-time.rf.test.final.balanced <- system.time(rf_predicted_balanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_final_balanced, dat_test_balanced_rose))))
-rf_accuracy_balanced <- mean(round(rf_predicted_balanced == dat_test_balanced_rose$label))
-tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),dat_test_balanced_rose$label)
+time.rf.test.final.balanced <- system.time(rf_predicted_balanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_final_balanced, rf_dat_test))))
+rf_accuracy_balanced <- mean(round(rf_predicted_balanced == rf_dat_test$label))
+tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),rf_dat_test$label)
 rf_AUC_balanced <- WeightedAUC(tpr.fpr.balanced)
 
 cat("AUC for tuned Random Forest(balanced): ", rf_AUC_balanced,".\n")
@@ -416,10 +422,11 @@ cat("Accuracy for tuned Random Forest(balanced)", rf_accuracy_balanced*100,"%.\n
 cat("Training time for tuned Random Forest: ", time.rf.train.final.balanced[1], "s.\n")
 cat("Testing time for tuned Random Forest: ", time.rf.test.final.balanced[1], "s.\n")
 cat("   ","\n")
+
 # Imbalanced:
-time.rf.test.final.imbalanced <- system.time(rf_predicted_imbalanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_final_imbalanced, dat_test))))
-rf_accuracy_imbalanced <- mean(round(rf_predicted_imbalanced == dat_test$label))
-tpr.fpr.imbalanced <- WeightedROC(as.numeric(rf_predicted_imbalanced),dat_test$label)
+time.rf.test.final.imbalanced <- system.time(rf_predicted_imbalanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_final_imbalanced, rf_dat_test))))
+rf_accuracy_imbalanced <- mean(round(rf_predicted_imbalanced == rf_dat_test$label))
+tpr.fpr.imbalanced <- WeightedROC(as.numeric(rf_predicted_imbalanced),rf_dat_test$label)
 rf_AUC_imbalanced <- WeightedAUC(tpr.fpr.imbalanced)
 
 cat("AUC for tuned Random Forest(imbalanced): ", rf_AUC_imbalanced,".\n")
@@ -827,14 +834,19 @@ old_dat_train$label <- as.numeric(old_dat_train$label)
 old_dat_test$label <- as.numeric(old_dat_test$label)
 
 # Balance data
-old_dat_train_balanced_rose <- ROSE(label~., old_dat_train,seed=2020)$data
-old_dat_test_balanced_rose <- ROSE(label~., old_dat_test, seed=2020)$data
+# dat_train_balanced_rose<-ROSE(label~., dat_train,seed=2020)$data (ROSE balancing method is suck in this case)
+# dat_test_balanced_rose <- ROSE(label~., dat_test, seed=2020)$data
+old_rf_dat_train <- old_dat_train
+old_rf_dat_test <- old_dat_test
+old_rf_dat_train$label <- as.factor(old_rf_dat_train$label)
+old_rf_dat_test$label <- as.numeric(old_rf_dat_test$label)
+old_dat_train_balanced_SMOTE <- SMOTE(label ~ ., old_rf_dat_train, perc.over = 100, perc.under=200)
 
 
 # Train Model
 if(train.rf.old.feature){
   # Balanced
-  old_time.rf.train.final.balanced <- system.time(old_random_forest_fit_final_balanced <- old_random_forest_train(old_dat_train_balanced_rose, mtry = 308, tree_number = 500, node_size = 10))
+  old_time.rf.train.final.balanced <- system.time(old_random_forest_fit_final_balanced <- old_random_forest_train(old_dat_train_balanced_SMOTE, mtry = 308, tree_number = 500, node_size = 10))
   save(old_random_forest_fit_final_balanced, file = "../output/rf_train_final_balanced_old_feature.RData")
   save(old_time.rf.train.final.balanced, file = "../output/rf_train_final_time_balanced_old_feature.RData")
   # Imbalanced
@@ -852,9 +864,9 @@ if(train.rf.old.feature){
 # Evaluate Model
 # Balanced:
 if(test.rf.old.feature){
-old_time.rf.test.final.balanced <- system.time(rf_predicted_balanced <- as.numeric(as.vector(old_random_forest_test(old_random_forest_fit_final_balanced, old_dat_test_balanced_rose))))
-old_rf_accuracy_balanced <- mean(round(rf_predicted_balanced == old_dat_test_balanced_rose$label))
-old_tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),old_dat_test_balanced_rose$label)
+old_time.rf.test.final.balanced <- system.time(rf_predicted_balanced <- as.numeric(as.vector(old_random_forest_test(old_random_forest_fit_final_balanced, old_rf_dat_test))))
+old_rf_accuracy_balanced <- mean(round(rf_predicted_balanced == old_rf_dat_test$label))
+old_tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),old_rf_dat_test$label)
 old_rf_AUC_balanced <- WeightedAUC(old_tpr.fpr.balanced)
 
 cat("AUC(balanced) for Random Forest with old feature: ", old_rf_AUC_balanced,".\n")
@@ -864,9 +876,9 @@ cat("Testing time (balanced) for Random Forest with old feature: ", old_time.rf.
 cat("   ","\n")
 
 # Imbalanced:
-old_time.rf.test.final.imbalanced <- system.time(rf_predicted_imbalanced <- as.numeric(as.vector(old_random_forest_test(old_random_forest_fit_final_imbalanced, old_dat_test))))
-old_rf_accuracy_imbalanced <- mean(round(rf_predicted_imbalanced == old_dat_test$label))
-old_tpr.fpr.imbalanced <- WeightedROC(as.numeric(rf_predicted_imbalanced),old_dat_test$label)
+old_time.rf.test.final.imbalanced <- system.time(rf_predicted_imbalanced <- as.numeric(as.vector(old_random_forest_test(old_random_forest_fit_final_imbalanced, old_rf_dat_test))))
+old_rf_accuracy_imbalanced <- mean(round(rf_predicted_imbalanced == old_rf_dat_test$label))
+old_tpr.fpr.imbalanced <- WeightedROC(as.numeric(rf_predicted_imbalanced),old_rf_dat_test$label)
 old_rf_AUC_imbalanced <- WeightedAUC(old_tpr.fpr.imbalanced)
 
 cat("AUC(imbalanced) for Random Forest with old feature: ", old_rf_AUC_imbalanced,".\n")
