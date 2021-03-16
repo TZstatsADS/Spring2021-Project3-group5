@@ -148,7 +148,7 @@ In this chunk, we have a set of controls for the evaluation experiments.
 + (T/F) run evaluation on the test set
 
 ```{r exp_setup}
-run.presentation.day <- FALSE #presentation day flag. No training. Generate a csv file
+run.presentation.day <- TRUE #presentation day flag. No training. Generate a csv file
 run.cv <- TRUE # run cross-validation on the training set
 sample.reweight <- TRUE # run sample reweighting in model training
 K <- 5  # number of CV folds
@@ -345,7 +345,8 @@ if(run.gbm.test){
 
 show gbm accuracy and AUC
 ```{r}
-if (run.gbm){
+if (run.gbm.test){
+  load(file="../output/gbm_outputs.RData")
   gbm_accu <- mean(gbm_dat_test$label == label_pred_baseline)
   gbm.auc <- WeightedROC(as.numeric(label_pred_baseline), gbm_dat_test$label)
   gbm_auc = WeightedAUC(gbm.auc)
@@ -1092,6 +1093,10 @@ if (run.presentation.day){
   csvdata <- data.frame(Index, Baseline)
   
   write.csv(csvdata,csvfileoutput, row.names=FALSE,quote = FALSE)
+  
+  
+  #presentation_day_gbm_accu <- mean(info$label == label_pred_baseline)
+  #cat("The accuracy of GBM baseline model is", presentation_day_gbm_accu*100, "%.\n")
   
 }
 ```
