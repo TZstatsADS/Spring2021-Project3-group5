@@ -7,6 +7,25 @@ test <- function(model, features, pred.type){
   return(res)
 }
 
+## Random Forest
+## old features
+old_random_forest_test <- function(model, testset){
+  test.x = as.matrix(testset[ , -6007])
+  set.seed(2020)
+  return(
+    predict(model, test.x)
+  )
+}
+
+## new features
+random_forest_test <- function(model, testset){
+  test.x = as.matrix(testset[ , -6023])
+  set.seed(2020)
+  return(
+    predict(model, test.x)
+  )
+}
+
 
 ## SVM
 svm_test = function(svm_model, testing_data, model_selection=FALSE){
@@ -30,7 +49,7 @@ test_gbm <- function(model, input.test, n, pred.type){
   return(res)
 }
 
-# ridge
+## Ridge
 ridge_test <- function(model, features, pred.type){
   
   ### Input: the fitted classification model using training data and processed features from testing images 
