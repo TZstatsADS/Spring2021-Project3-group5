@@ -4,12 +4,13 @@ if(!require("randomForest")){
 library(randomForest)
 random_forest_tune <- function(df){
   set.seed(2020)
+  set.seed(0)
   x = as.matrix(df[, -6007])
   y = factor(df[, 6007])
   return(
     tuneRF(x = x,
            y = y,
-           ntreeTry = 2000,
+           ntreeTry = 1000,
            improve = 0.05,
            stepFactor = 2)
   )
