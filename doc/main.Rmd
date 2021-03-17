@@ -388,7 +388,6 @@ We also trained random forest model with the datasets that are extracted by old 
 ```{r}
 if(run.rf){
   ## Training RF
-  source("../lib/random_forest.R")
   if(train.rf){
     rf_dat_train <- dat_train
     rf_dat_train$label <- as.factor(rf_dat_train$label)
@@ -786,7 +785,6 @@ The fourth alternative model is random forest using old features given in the st
 
 ```{r}
 if(run.rf.old.feature){
-  source("../lib/random_forest_old_feature.R")
   old_feature <- function(input_list = fiducial_pt_list, index){
     old_pairwise_dist <- function(vec){
       return(as.vector(dist(vec)))

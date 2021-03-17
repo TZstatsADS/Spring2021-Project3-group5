@@ -15,7 +15,7 @@ if(!require("randomForest")){
 }
 library(randomForest)
 
-random_forest_tune <- function(df){
+old_random_forest_tune <- function(df){
   set.seed(2020)
   x = as.matrix(df[, -6007])
   y = factor(df[, 6007])
