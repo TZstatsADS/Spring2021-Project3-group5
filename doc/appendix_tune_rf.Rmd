@@ -195,7 +195,7 @@ dat_test$label <- as.numeric(dat_test$label)
 ```
 
 # If use SMOTE to balance the data
-ntree = 1000, node = 30, mtry = 154 is the best.
+ntree = 500, node = 10, mtry = 308 is the best.
 ```{r}
 source("../lib/random_forest.R")
 if(run.SMOTE.balance){
