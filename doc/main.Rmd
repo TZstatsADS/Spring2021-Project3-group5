@@ -1,5 +1,6 @@
 ---
 title: "Project 3: Facial Expression Predictive Modeling"
+subtitle: "Group 5"
 author: "Jingbin Cao, Chuanchuan Liu, Dennis Shpits, Yingyao Wu, Zikun Zhuang"
 output:
   pdf_document: default
@@ -8,7 +9,7 @@ output:
     df_print: paged
 ---
 
-```{r message=FALSE, echo=FALSE}
+```{r message=FALSE, echo=FALSE, warning=FALSE}
 #Test Branch created
 if(!require("R.matlab")){
   install.packages("R.matlab")
@@ -122,6 +123,7 @@ train_label_path <- paste(train_dir, "label.csv", sep="")
 
 In this chunk, we have a set of controls for the evaluation experiments.
 
++ (T/F) whether it is on presentation day for producing the csv file
 + (T/F) cross-validation on the training set
 + (T/F) reweighting the samples for training set
 + (number) K, the number of CV folds
@@ -129,20 +131,20 @@ In this chunk, we have a set of controls for the evaluation experiments.
 + (T/F) run evaluation on an independent test set
 + (T/F) process features for test set
 
-+ (T/F) run improved gbm model
++ (T/F) run gbm baseline model
++ (T/F) evaluate performance on the test set
 + (number) gbm.numtrees, the number of trees to use in GBM baseline
+
 + (T/F) return polynomial features matrix only
 + (T/F) add polynomial features to starter code features matrix
 
 + (T/F) run svm model
 + (T/F) perform model selection over a list of svm models
-+ (T/F) run evaluation on the test set
++ (T/F) evaluate performance on the test set
 
 + (T/F) run random forest model
-+ (T/F) rebalance training set
 + (T/F) train random forest model
 + (T/F) run evaluation on the test set
-+ (T/F) tune hyperparameters for random forest model
 
 + (T/F) run ridge model
 + (0/1) alpha, alpha=0 for ridge regression, alpha=1 for lasso regression
@@ -154,7 +156,7 @@ In this chunk, we have a set of controls for the evaluation experiments.
 + (T/F) run evaluation on the test set
 
 ```{r exp_setup}
-run.presentation.day <- TRUE #presentation day flag. No training. Generate a csv file
+run.presentation.day <- FALSE #presentation day flag. No training. Generate a csv file
 run.cv <- TRUE # run cross-validation on the training set
 sample.reweight <- TRUE # run sample reweighting in model training
 K <- 5  # number of CV folds
@@ -163,8 +165,8 @@ run.test <- TRUE # run evaluation on an independent test set
 run.feature.test <- TRUE # process features for test set
 
 # gbm
-run.gbm.train <- TRUE # gbm(imroved) is the chosen advanced model
-run.gbm.test <- TRUE # gbm(imroved) is the chosen advanced model
+run.gbm.train <- FALSE # gbm(imroved) is the chosen advanced model
+run.gbm.test <- FALSE # gbm(imroved) is the chosen advanced model
 gbm.numtrees <- 1000 #number of trees to use in gbm
 
 #features options
@@ -177,7 +179,7 @@ model.selection <- FALSE # perform model selection on svm models
 run.svm.test <- TRUE # evaluate performance on the test set
 
 # Random Forest Model with new feature
-run.rf <- TRUE
+run.rf <- FALSE
 train.rf <- TRUE # Train Random Forest Model
 test.rf <- TRUE # Test Random Forest Model
 
@@ -237,6 +239,8 @@ fiducial_pt_list <- lapply(1:n_files, readMat.matrix)
 save(fiducial_pt_list, file="../output/fiducial_pt_list.RData")
 ```
 
+If on presentation day, we will run our baseline and advanced model, and produce a csv file containing label predictions.
+
 ### Step 3: construct features and responses
 
 + The follow plots show how pairwise distance between fiducial points can work as feature for facial emotion recognition.
@@ -259,8 +263,10 @@ source("../lib/feature.R")
 tm_feature_train <- NA
 gbm_tm_feature_train <- NA
 if(run.feature.train){
-  tm_feature_train <- system.time(dat_train<-feature(fiducial_pt_list,train_idx, run.poly.feature, run.add.poly.feature))
-  gbm_tm_feature_train <- system.time(gbm_dat_train<-feature(fiducial_pt_list,train_idx, FALSE, FALSE))
+  tm_feature_train <- system.time(dat_train<-feature(fiducial_pt_list,train_idx, 
+                                                     run.poly.feature, run.add.poly.feature))
+  gbm_tm_feature_train <- system.time(gbm_dat_train<-feature(fiducial_pt_list,train_idx, 
+                                                             FALSE, FALSE))
   save(gbm_dat_train, file="../output/gbm_feature_train.RData")
   save(dat_train, file="../output/feature_train.RData")
 }else{
@@ -271,8 +277,10 @@ if(run.feature.train){
 tm_feature_test <- NA
 gbm_tm_feature_test <- NA
 if(run.feature.test){
-  tm_feature_test <- system.time(dat_test <- feature(fiducial_pt_list, test_idx, run.poly.feature, run.add.poly.feature))
-  gbm_tm_feature_test <- system.time(gbm_dat_test <- feature(fiducial_pt_list, test_idx, FALSE, FALSE))
+  tm_feature_test <- system.time(dat_test <- feature(fiducial_pt_list, test_idx, 
+                                                     run.poly.feature, run.add.poly.feature))
+  gbm_tm_feature_test <- system.time(gbm_dat_test <- feature(fiducial_pt_list, test_idx, 
+                                                             FALSE, FALSE))
   save(gbm_dat_test, file="../output/gbm_feature_test.RData")
   save(dat_test, file="../output/feature_test.RData")
 }else{
@@ -302,16 +310,7 @@ source("../lib/train.R")
 source("../lib/test.R")
 ```
 
-# Baseline Model
-
-
---------THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL.----------
-
-
-
-
-
-# Advanced Model 1: Improved GBM Model
+# Baseline GBM Model
 
 * Model Training
 
@@ -321,19 +320,20 @@ if (run.gbm.train){
 
     gbm_dat_train$label <- as.factor(gbm_dat_train$label)
     dat_train_balanced_gbm <- SMOTE(label ~ ., gbm_dat_train, perc.over = 100, perc.under=200)
-    #save(dat_train_balanced_rose, file="../output/balanced_data.RData")
     table(dat_train_balanced_gbm$label)
 
-    gbm_tm_train <- system.time(gbm_train <- train_gbm(dat_train_balanced_gbm, s=0.1, K=K, n=gbm.numtrees,w = NULL))
+    gbm_tm_train <- system.time(gbm_train <- train_gbm(dat_train_balanced_gbm, s=0.1, 
+                                                       K=K, n=gbm.numtrees,w = NULL))
 
   } else {
-    gbm_tm_train <- system.time(gbm_train <- train_gbm(gbm_dat_train, s=0.1, K=K, n=gbm.numtrees,w = NULL))
+    gbm_tm_train <- system.time(gbm_train <- train_gbm(gbm_dat_train, s=0.1, 
+                                                       K=K, n=gbm.numtrees,w = NULL))
   }
 
   # plot the performance
-  best.iter.oob <- gbm.perf(gbm_train,method="OOB")  # returns out-of-bag estimated best number of trees
+  best.iter.oob <- gbm.perf(gbm_train,method="OOB") # returns out-of-bag estimated best number of trees
   print(best.iter.oob)
-  best.iter.cv <- gbm.perf(gbm_train,method="cv")   # returns K-fold cv estimate of best number of trees
+  best.iter.cv <- gbm.perf(gbm_train,method="cv") # returns K-fold cv estimate of best number of trees
   print(best.iter.cv)
 
   saveRDS(gbm_train, "../output/gbm_model.rds")
@@ -351,13 +351,15 @@ if(run.gbm.test){
   feature_test <- as.matrix(gbm_dat_test[, 1:ncol(gbm_dat_test)-1])
 
   gbm_train <- readRDS("../output/gbm_model.rds")
-  gbm_tm_test <- system.time(prob_pred_baseline<-test_gbm(gbm_train,as.data.frame(feature_test),n=best.iter.cv,pred.type = 'response'))
+  gbm_tm_test <- system.time(prob_pred_baseline<-test_gbm(gbm_train,as.data.frame(feature_test),
+                                                          n=best.iter.cv,pred.type = 'response'))
 
   label_pred_baseline <- colnames(prob_pred_baseline)[apply(prob_pred_baseline, 1, which.max)]
 }
 ```
 
-show gbm accuracy and AUC
+* Show GBM Accuracy and AUC
+
 ```{r}
 if (run.gbm.test){
   load(file="../output/gbm_outputs.RData")
@@ -372,80 +374,73 @@ if (run.gbm.test){
   cat("Time for testing model=", gbm_tm_test[1], "s \n")
 }
 ```
---------THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL.----------
 
 
-# Advanced Model 2: Random Forest
+
+# Advanced Model: Random Forest
 
 The second advanced model is random forest. Here we use the datasets that are extracted by new feature functions. We used two models trained by both imbalanced and balanced dataset. We used SMOTE function to balance both training and testing data. For tuning the model, we set mtry = 308, tree number = 500, and node size = 10 for the RF model using balanced data (SMOTE), and we set mtry = 308, tree number = 1500, and node size = 30 for the RF model using imbalanced data. The evaluation of the model is shown at the end of this section.  
 
 The tuning part is in a separate file named "appendix_tune_rf.rmd" in doc folder. Please feel free to check that to see the tuning process.  
 
 We also trained random forest model with the datasets that are extracted by old feature functions. That is in part 6. Thank you for reading!
+
 ```{r}
 if(run.rf){
-#balanced data
-# dat_train_balanced_rose<-ROSE(label~., dat_train,seed=2020)$data (ROSE balancing method is suck in this case)
-# dat_test_balanced_rose <- ROSE(label~., dat_test, seed=2020)$data
-
-
-## Training RF
-source("../lib/random_forest.R")
-if(train.rf){
-  rf_dat_train <- dat_train
-  rf_dat_train$label <- as.factor(rf_dat_train$label)
-  dat_train_balanced_SMOTE <- SMOTE(label ~ ., rf_dat_train, perc.over = 120, perc.under=200)
-  # Train RF by balanced data
-  time.rf.train.final.balanced <- system.time(random_forest_fit_final_balanced <- random_forest_train(dat_train_balanced_SMOTE, mtry = 308, tree_number = 500, node_size = 10))
-  save(random_forest_fit_final_balanced, file = "../output/rf_train_final_balanced.RData")
-  save(time.rf.train.final.balanced, file = "../output/rf_train_final_time_balanced.RData")
-  # Train RF by imbalanced data
-  time.rf.train.final.imbalanced <- system.time(random_forest_fit_final_imbalanced <- random_forest_train(dat_train, mtry = 308, tree_number = 1500, node_size = 30))
-  save(time.rf.train.final.imbalanced, file = "../output/rf_train_final_time_imbalanced.RData")
-  save(random_forest_fit_final_imbalanced, file = "../output/rf_train_final_imbalanced.RData")
-}else{
-  load("../output/rf_train_final_balanced.RData")
-  load("../output/rf_train_final_time_balanced.RData")
-  load("../output/rf_train_final_time_imbalanced.RData")
-  load("../output/rf_train_final_imbalanced.RData")
-}
-# Evaluation:
-# Balanced:
-if(test.rf){
-rf_dat_test <- dat_test
-rf_dat_test$label <- as.numeric(rf_dat_test$label)
-
-time.rf.test.final.balanced <- system.time(rf_predicted_balanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_final_balanced, rf_dat_test))))
-rf_accuracy_balanced <- mean(round(rf_predicted_balanced == rf_dat_test$label))
-tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),rf_dat_test$label)
-rf_AUC_balanced <- WeightedAUC(tpr.fpr.balanced)
-
-cat("AUC for tuned Random Forest(balanced): ", rf_AUC_balanced,".\n")
-cat("Accuracy for tuned Random Forest(balanced)", rf_accuracy_balanced*100,"%.\n")
-cat("Training time for tuned Random Forest: ", time.rf.train.final.balanced[1], "s.\n")
-cat("Testing time for tuned Random Forest: ", time.rf.test.final.balanced[1], "s.\n")
-cat("   ","\n")
-
-# Imbalanced:
-time.rf.test.final.imbalanced <- system.time(rf_predicted_imbalanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_final_imbalanced, rf_dat_test))))
-rf_accuracy_imbalanced <- mean(round(rf_predicted_imbalanced == rf_dat_test$label))
-tpr.fpr.imbalanced <- WeightedROC(as.numeric(rf_predicted_imbalanced),rf_dat_test$label)
-rf_AUC_imbalanced <- WeightedAUC(tpr.fpr.imbalanced)
-
-cat("AUC for tuned Random Forest(imbalanced): ", rf_AUC_imbalanced,".\n")
-cat("Accuracy for tuned Random Forest(imbalanced)", rf_accuracy_imbalanced*100,"%.\n")
-cat("Training time for tuned Random Forest: ", time.rf.train.final.imbalanced[1], "s.\n")
-cat("Testing time for tuned Random Forest: ", time.rf.test.final.imbalanced[1], "s.\n")
-}
+  ## Training RF
+  source("../lib/random_forest.R")
+  if(train.rf){
+    rf_dat_train <- dat_train
+    rf_dat_train$label <- as.factor(rf_dat_train$label)
+    dat_train_balanced_SMOTE <- SMOTE(label ~ ., rf_dat_train, perc.over = 120, perc.under=200)
+    # Train RF by balanced data
+    time.rf.train.final.balanced <- system.time(
+      random_forest_fit_final_balanced <- random_forest_train(dat_train_balanced_SMOTE, 
+                                                              mtry = 308, tree_number = 500, 
+                                                              node_size = 10))
+    save(random_forest_fit_final_balanced, file = "../output/rf_train_final_balanced.RData")
+    save(time.rf.train.final.balanced, file = "../output/rf_train_final_time_balanced.RData")
+    # Train RF by imbalanced data
+    time.rf.train.final.imbalanced <- system.time(
+      random_forest_fit_final_imbalanced <- random_forest_train(dat_train, 
+                                                                mtry = 308, tree_number = 1500, 
+                                                                node_size = 30))
+    save(time.rf.train.final.imbalanced, file = "../output/rf_train_final_time_imbalanced.RData")
+    save(random_forest_fit_final_imbalanced, file = "../output/rf_train_final_imbalanced.RData")
+  }else{
+    load("../output/rf_train_final_balanced.RData")
+    load("../output/rf_train_final_time_balanced.RData")
+    load("../output/rf_train_final_time_imbalanced.RData")
+    load("../output/rf_train_final_imbalanced.RData")
+  }
+  # Evaluation:
+  if(test.rf){
+    rf_dat_test <- dat_test
+    rf_dat_test$label <- as.numeric(rf_dat_test$label)
+    
+    time.rf.test.final.balanced <- system.time(
+      rf_predicted_balanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_final_balanced,
+                                                                       rf_dat_test))))
+    rf_accuracy_balanced <- mean(round(rf_predicted_balanced == rf_dat_test$label))
+    tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),rf_dat_test$label)
+    rf_AUC_balanced <- WeightedAUC(tpr.fpr.balanced)
+    
+    cat("AUC for tuned Random Forest(balanced): ", rf_AUC_balanced,".\n")
+    cat("Accuracy for tuned Random Forest(balanced)", rf_accuracy_balanced*100,"%.\n")
+    cat("Training time for tuned Random Forest: ", time.rf.train.final.balanced[1], "s.\n")
+    cat("Testing time for tuned Random Forest: ", time.rf.test.final.balanced[1], "s.\n")
+    cat("   ","\n")
+  }
 }
 ```
+
 We think RF model do not need Cross-Validation. Here is a snippet from Breiman's official documentation:
 In random forests, there is no need for cross-validation or a separate test set to get an unbiased estimate of the test set error. It is estimated internally, during the run, as follows: Each tree is constructed using a different bootstrap sample from the original data. About one-third of the cases are left out of the bootstrap sample and not used in the construction of the kth tree. Put each case left out in the construction of the kth tree down the kth tree to get a classification. In this way, a test set classification is obtained for each case in about one-third of the trees. At the end of the run, take j to be the class that got most of the votes every time case n was oob. The proportion of times that j is not equal to the true class of n averaged over all cases is the oob error estimate. This has proven to be unbiased in many tests.
 
---------THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL.----------
 
 
-# Advanced Model 3: SVM Model
+
+# Alternative Model 1: SVM Model
 
 * Balance the Training Set
 
@@ -467,7 +462,7 @@ if(run.svm){
 
 * Model Selection
 
-Tuning hyperparameters for both linear and radial basis kernel and select the kernel method that produces the highest AUC and accuracy among the two methods.
+Tuning hyper-parameters for both linear and radial basis kernel and select the kernel method that produces the highest AUC and accuracy among the two methods.
 
 ```{r}
 if(run.svm){
@@ -477,12 +472,14 @@ if(run.svm){
   if(model.selection){
     svm_model_auc <- rep(NA, 2)
     svm_model_accu <- rep(NA, 2)
-    #################################################################################### linear kernel
+    ### linear kernel
     if(run.cv){
       best.linear.cost <- svm_linear_cost_tune(svm_training_data)
-      cat("The best cost for svm model with linear kernel is: ", best.linear.cost$best.parameters$cost)
+      cat("The best cost for svm model with linear kernel is: ", 
+          best.linear.cost$best.parameters$cost)
       svm.linear.train.start = proc.time()
-      tm_svm_linear_mod <- system.time(svm_linear_mod <- svm_linear_train(svm_training_data, 0.01, K))
+      tm_svm_linear_mod <- system.time(svm_linear_mod <- svm_linear_train(svm_training_data, 
+                                                                          0.01, K))
       svm.linear.train.end = proc.time()
       svm.linear.tm = svm.linear.train.end - svm.linear.train.start
       save(svm_linear_mod, file="../output/svm_linear_mod.RData")
@@ -494,11 +491,12 @@ if(run.svm){
     tpr.fpr_linear <- WeightedROC(as.numeric(svm_linear_pred), svm_training_data$label)
     svm_model_auc[1] <- WeightedAUC(tpr.fpr_linear)
 
-    ################################################################################ radial basis kernel
+    #### radial basis kernel
     if(run.cv){
       #best.radial.cost <- svm_radial_cost_tune(svm_training_data)
       svm.rbf.train.start = proc.time()
-      tm_svm_radial_mod < system.time(svm_radial_mod <- svm_radial_train(svm_training_data, 1, K))
+      tm_svm_radial_mod < system.time(svm_radial_mod <- svm_radial_train(svm_training_data, 
+                                                                         1, K))
       svm.rbf.train.end = proc.time()
       svm.rbf.tm = svm.rbf.train.end - svm.rbf.train.start
       save(svm_radial_mod, file="../output/svm_radial_mod.RData")
@@ -520,7 +518,8 @@ if(run.svm){
     save(svm_res, file="../output/svm_model_selection.RData")
   } else {
     if(!run.presentation.day){
-      tm_svm_radial_mod < system.time(svm_radial_mod <- svm_radial_train(svm_training_data, 1, K))
+      tm_svm_radial_mod < system.time(svm_radial_mod <- svm_radial_train(svm_training_data, 
+                                                                         1, K))
     } else {
       load(file="../output/svm_radial_mod.RData")
       load(file="../output/svm_model_selection.RData")
@@ -531,8 +530,7 @@ if(run.svm){
 ```
 
 
-
-**Since radial basis kernel has higher accuracy and AUC than linear kernel, we will choose radial basis as our kernel method for training the svm model.**
+Since radial basis kernel has higher accuracy and AUC than linear kernel, we will choose radial basis as our kernel method for training the svm model.
 
   * Evaluation on Testing Data
 
@@ -554,23 +552,20 @@ if(run.svm){
 ```
 
 
-
-
 * Summarize Running Time
 
 ```{r}
 if(run.svm){
+  cat("Time for construct training features =", tm_feature_train[1], "s \n")
+  cat("Time for construct testing features =", tm_feature_test[1], "s \n")
   cat("Time for training svm model =", svm.rbf.tm[[3]], "s \n")
   cat("Time for testing svm model=", tm_svm_rbf_test[1], "s \n")
 }
 ```
 
---------THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL.----------
 
 
-
-
-# Advanced Model 4: Ridge Model
+# Alternative Model 2: Ridge Model
 
 * Apply Constructed Ridge Model to the Training Set
 
@@ -579,7 +574,8 @@ if(run.ridge){
   tm_ridge_train <- NA
   if (train.ridge){
     dat_train_rebalanced <- ROSE(label ~ ., data = dat_train, seed=2020)$data
-    tm_ridge_train <- system.time(ridge_cv_model<-ridge_train(train_data=dat_train_rebalanced, alpha=alpha, K=K, lambda=lambda))
+    tm_ridge_train <- system.time(ridge_cv_model<-ridge_train(train_data=dat_train_rebalanced, 
+                                                              alpha=alpha, K=K, lambda=lambda))
     save(ridge_cv_model, file="../output/ridge_cv_model.RData")
     save(tm_ridge_train, file="../output/ridge_train_time.RData")
   } else {
@@ -616,7 +612,9 @@ if(run.ridge){
     load("../output/ridge_cv_model.RData")
     dat_test_rebalanced <- ROSE(label ~ ., data = dat_test, seed=2020)$data
     feature_test <- as.matrix(dat_test_rebalanced[, -dim(dat_test_rebalanced)[2]])
-    tm_ridge_test <- system.time(label_pred<-as.integer(ridge_test(model=ridge_cv_model, features=feature_test, pred.type = 'class')))
+    tm_ridge_test <- system.time(label_pred<-as.integer(ridge_test(model=ridge_cv_model, 
+                                                                   features=feature_test, 
+                                                                   pred.type = 'class')))
     save(tm_ridge_test, file="../output/ridge_test_time.RData")
   } else{
     load(file="../output/ridge_test_time.RData")
@@ -642,7 +640,8 @@ if(run.ridge){
   load("../output/ridge_cv_model.RData")
   dat_test_rebalanced <- ROSE(label ~ ., data = dat_test, seed=2020)$data
   feature_test <- as.matrix(dat_test_rebalanced[, -dim(dat_test_rebalanced)[2]])
-  label_pred = as.integer(predict(ridge_cv_model, s=opt_lambda, newx=feature_test, type='class'))
+  label_pred = as.integer(predict(ridge_cv_model, s=opt_lambda, newx=feature_test, 
+                                  type='class'))
   label_test = as.integer(dat_test_rebalanced$label)
   ridge_accuracy = mean(round(label_test== label_pred))
   cat("The accuracy of the ridge model is", ridge_accuracy*100, "%.\n")
@@ -651,12 +650,9 @@ if(run.ridge){
 }
 ```
 
---------THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL.----------
 
 
-
-
-# Advanced Model 5: PCA + LDA
+# Alternative Model 3: PCA + LDA
 
 * Rebalance Training Set
 
@@ -692,9 +688,11 @@ if(run.pca_lda){
         #run PCA
         pca <- prcomp(dat_train_new)
         #store for each potential PC
-        train_pca <- data.frame(pca$x[,1:num.pca[i]], label = balanced_train_data[dim(balanced_train_data)[2]])
+        train_pca <- data.frame(pca$x[,1:num.pca[i]], 
+                                label = balanced_train_data[dim(balanced_train_data)[2]])
         pred_pca <- predict(pca,dat_test_new)
-        test_pca <- data.frame(pred_pca[,1:num.pca[i]], label = balanced_test_data[dim(balanced_test_data)[2]])
+        test_pca <- data.frame(pred_pca[,1:num.pca[i]], 
+                               label = balanced_test_data[dim(balanced_test_data)[2]])
         #fitting the lda model
         lda_pca <- lda(label ~ ., data = train_pca)
         #stop time for training the model
@@ -726,9 +724,11 @@ if(run.pca_lda){
   train.model.start = proc.time()
   if(run.lda.train){
     pca_500 <- prcomp(balanced_train_data[,-dim(balanced_train_data)[2]])
-    train_pca_500 <- data.frame(pca_500$x[,1:500], label = balanced_train_data[dim(balanced_train_data)[2]])
+    train_pca_500 <- data.frame(pca_500$x[,1:500], 
+                                label = balanced_train_data[dim(balanced_train_data)[2]])
     pred_pca_500 <- predict(pca_500,balanced_test_data[,-dim(balanced_test_data)[2]])
-    test_pca_500 <- data.frame(pred_pca_500[,1:500], label = balanced_test_data[dim(balanced_test_data)[2]])
+    test_pca_500 <- data.frame(pred_pca_500[,1:500], 
+                               label = balanced_test_data[dim(balanced_test_data)[2]])
     save(train_pca_500, file="../output/feature_pca_train.RData")
     save(test_pca_500, file="../output/feature_pca_test.RData")  
   } else {
@@ -771,115 +771,111 @@ Prediction performance matters, so does the running times for constructing featu
 if(run.pca_lda){
   tm_train <- train.model.end - train.model.start
   tm_test <- test.model.end - test.model.start
-  cat("Time for constructing training features=", tm_feature_train[1], "s \n")
-  cat("Time for constructing testing features=", tm_feature_test[1], "s \n")
-  cat("Time for training model=", tm_train[1], "s \n")
-  cat("Time for testing model=", tm_test[1], "s \n")
+  cat("Time for constructing training features =", tm_feature_train[1], "s \n")
+  cat("Time for constructing testing features =", tm_feature_test[1], "s \n")
+  cat("Time for training model =", tm_train[1], "s \n")
+  cat("Time for testing model =", tm_test[1], "s \n")
 }
 ```
 
---------THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL.----------
 
-#  Advanced Model 6: Random Forest (RF) Model with old feature:  
-The sixth advanced model is random forest. Here we use the datasets that are extracted by old feature functions. We used two models trained by both imbalanced and balanced dataset. We used ROSE function to balance both training and testing data. For tuning the model, we set mtry = 308, tree number = 500, and node size = 10 for the RF model using balanced data, and we set mtry = 308, tree number = 1500, and node size = 30 for the RF model using imbalanced data. The evaluation of the model is shown at the end of this section, and we will compare this model with the RF model trained by new features.
+
+#  Alternative Model 4: Random Forest (RF) Model with old features: 
+
+The fourth alternative model is random forest using old features given in the starter code. Here we use the datasets that are extracted by old feature functions. We used two models trained by both imbalanced and balanced dataset. We used ROSE function to balance both training and testing data. For tuning the model, we set mtry = 308, tree number = 500, and node size = 10 for the RF model using balanced data, and we set mtry = 308, tree number = 1500, and node size = 30 for the RF model using imbalanced data. The evaluation of the model is shown at the end of this section, and we will compare this model with the RF model trained by new features.
+
 ```{r}
 if(run.rf.old.feature){
-source("../lib/random_forest_old_feature.R")
-old_feature <- function(input_list = fiducial_pt_list, index){
-  old_pairwise_dist <- function(vec){
-    return(as.vector(dist(vec)))
+  source("../lib/random_forest_old_feature.R")
+  old_feature <- function(input_list = fiducial_pt_list, index){
+    old_pairwise_dist <- function(vec){
+      return(as.vector(dist(vec)))
+    }
+    old_pairwise_dist_result <-function(mat){
+      return(as.vector(apply(mat, 2, old_pairwise_dist)))
+    }
+    old_pairwise_dist_feature <- t(sapply(input_list[index], old_pairwise_dist_result))
+    dim(old_pairwise_dist_feature)
+    old_pairwise_data <- cbind(old_pairwise_dist_feature, info$label[index])
+    colnames(old_pairwise_data) <- c(paste("feature", 1:(ncol(old_pairwise_data)-1), sep = ""), 
+                                     "label")
+    old_pairwise_data <- as.data.frame(old_pairwise_data)
+    old_pairwise_data$label <- as.factor(old_pairwise_data$label)
+    return(feature_df = old_pairwise_data)
   }
-  old_pairwise_dist_result <-function(mat){
-    return(as.vector(apply(mat, 2, old_pairwise_dist)))
+
+  old_tm_feature_train <- NA
+  if(run.feature.train){
+    old_tm_feature_train <- system.time(old_dat_train <- old_feature(fiducial_pt_list, train_idx))
+    save(old_dat_train, file="../output/feature_train_old.RData")
+  }else{
+    load(file="../output/feature_train_old.RData")
   }
-  old_pairwise_dist_feature <- t(sapply(input_list[index], old_pairwise_dist_result))
-  dim(old_pairwise_dist_feature)
-  old_pairwise_data <- cbind(old_pairwise_dist_feature, info$label[index])
-  colnames(old_pairwise_data) <- c(paste("feature", 1:(ncol(old_pairwise_data)-1), sep = ""), "label")
-  old_pairwise_data <- as.data.frame(old_pairwise_data)
-  old_pairwise_data$label <- as.factor(old_pairwise_data$label)
-  return(feature_df = old_pairwise_data)
-}
+  old_tm_feature_test <- NA
+  if(run.feature.test){
+    old_tm_feature_test <- system.time(old_dat_test <- old_feature(fiducial_pt_list, test_idx))
+    save(old_dat_test, file="../output/feature_test_old.RData")
+  }else{
+    load(file="../output/feature_test_old.RData")
+  }
+  # transfer label column from factor to numeric
+  old_dat_train$label <- as.numeric(old_dat_train$label)
+  old_dat_test$label <- as.numeric(old_dat_test$label)
+  
+  # Balance data
+  gbm_dat_train$label <- as.factor(gbm_dat_train$label)
+  dat_train_balanced_gbm <- SMOTE(label ~ ., gbm_dat_train, perc.over = 100, perc.under=200)
+  old_dat_train_balanced_SMOTE <- dat_train_balanced_gbm
 
-old_tm_feature_train <- NA
-if(run.feature.train){
-  old_tm_feature_train <- system.time(old_dat_train <- old_feature(fiducial_pt_list, train_idx))
-  save(old_dat_train, file="../output/feature_train_old.RData")
-}else{
-  load(file="../output/feature_train_old.RData")
-}
-old_tm_feature_test <- NA
-if(run.feature.test){
-  old_tm_feature_test <- system.time(old_dat_test <- old_feature(fiducial_pt_list, test_idx))
-  save(old_dat_test, file="../output/feature_test_old.RData")
-}else{
-  load(file="../output/feature_test_old.RData")
-}
-# transfer label column from factor to numeric
-
-old_dat_train$label <- as.numeric(old_dat_train$label)
-old_dat_test$label <- as.numeric(old_dat_test$label)
-
-# Balance data
-# dat_train_balanced_rose<-ROSE(label~., dat_train,seed=2020)$data (ROSE balancing method is suck in this case)
-# dat_test_balanced_rose <- ROSE(label~., dat_test, seed=2020)$data
-# old_rf_dat_train <- old_dat_train
-# old_rf_dat_test <- old_dat_test
-# old_rf_dat_train$label <- as.factor(old_rf_dat_train$label)
-# old_rf_dat_test$label <- as.numeric(old_rf_dat_test$label)
-gbm_dat_train$label <- as.factor(gbm_dat_train$label)
-dat_train_balanced_gbm <- SMOTE(label ~ ., gbm_dat_train, perc.over = 100, perc.under=200)
-old_dat_train_balanced_SMOTE <- dat_train_balanced_gbm
-
-# Train Model
-if(train.rf.old.feature){
-  # Balanced
-  old_time.rf.train.final.balanced <- system.time(old_random_forest_fit_final_balanced <- old_random_forest_train(old_dat_train_balanced_SMOTE, mtry = 308, tree_number = 500, node_size = 10))
-  save(old_random_forest_fit_final_balanced, file = "../output/rf_train_final_balanced_old_feature.RData")
-  save(old_time.rf.train.final.balanced, file = "../output/rf_train_final_time_balanced_old_feature.RData")
-  # Imbalanced
-  old_time.rf.train.final.imbalanced <- system.time(old_random_forest_fit_final_imbalanced <- old_random_forest_train(old_dat_train, mtry = 308, tree_number = 1500, node_size = 30))
-  save(old_time.rf.train.final.imbalanced, file = "../output/rf_train_final_time_imbalanced_old_feature.RData")
-  save(old_random_forest_fit_final_imbalanced, file = "../output/rf_train_final_imbalanced_old_feature.RData")
-}else{
-  load("../output/rf_train_final_balanced_old_feature.RData")
-  load("../output/rf_train_final_time_balanced_old_feature.RData")
-  load("../output/rf_train_final_time_imbalanced_old_feature.RData")
-  load("../output/rf_train_final_imbalanced_old_feature.RData")
-}
+  # Train Model
+  if(train.rf.old.feature){
+    # Balanced
+    old_time.rf.train.final.balanced <- system.time(
+      old_random_forest_fit_final_balanced <- old_random_forest_train(old_dat_train_balanced_SMOTE, 
+                                                                      mtry = 308, tree_number = 500, 
+                                                                      node_size = 10))
+    save(old_random_forest_fit_final_balanced, 
+         file = "../output/rf_train_final_balanced_old_feature.RData")
+    save(old_time.rf.train.final.balanced, 
+         file = "../output/rf_train_final_time_balanced_old_feature.RData")
+    # Imbalanced
+    old_time.rf.train.final.imbalanced <- system.time(
+      old_random_forest_fit_final_imbalanced <- old_random_forest_train(old_dat_train, 
+                                                                        mtry = 308, 
+                                                                        tree_number = 1500, 
+                                                                        node_size = 30))
+    save(old_time.rf.train.final.imbalanced, 
+         file = "../output/rf_train_final_time_imbalanced_old_feature.RData")
+    save(old_random_forest_fit_final_imbalanced, 
+         file = "../output/rf_train_final_imbalanced_old_feature.RData")
+  }else{
+    load("../output/rf_train_final_balanced_old_feature.RData")
+    load("../output/rf_train_final_time_balanced_old_feature.RData")
+    load("../output/rf_train_final_time_imbalanced_old_feature.RData")
+    load("../output/rf_train_final_imbalanced_old_feature.RData")
+  }
 
 
-# Evaluate Model
-# Balanced:
-old_rf_dat_test <- old_dat_test
-old_rf_dat_test$label <- as.numeric(old_rf_dat_test$label)
-if(test.rf.old.feature){
-old_time.rf.test.final.balanced <- system.time(rf_predicted_balanced <- as.numeric(as.vector(old_random_forest_test(old_random_forest_fit_final_balanced, old_rf_dat_test))))
-old_rf_accuracy_balanced <- mean(round(rf_predicted_balanced == old_rf_dat_test$label))
-old_tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),old_rf_dat_test$label)
-old_rf_AUC_balanced <- WeightedAUC(old_tpr.fpr.balanced)
-
-cat("AUC(balanced) for Random Forest with old feature: ", old_rf_AUC_balanced,".\n")
-cat("Accuracy(balanced) for Random Forest with old feature", old_rf_accuracy_balanced*100,"%.\n")
-cat("Training time (balanced) for Random Forest with old feature: ", old_time.rf.train.final.balanced[1], "s.\n")
-cat("Testing time (balanced) for Random Forest with old feature: ", old_time.rf.test.final.balanced[1], "s.\n")
-cat("   ","\n")
-
-# Imbalanced:
-old_time.rf.test.final.imbalanced <- system.time(rf_predicted_imbalanced <- as.numeric(as.vector(old_random_forest_test(old_random_forest_fit_final_imbalanced, old_rf_dat_test))))
-old_rf_accuracy_imbalanced <- mean(round(rf_predicted_imbalanced == old_rf_dat_test$label))
-old_tpr.fpr.imbalanced <- WeightedROC(as.numeric(rf_predicted_imbalanced),old_rf_dat_test$label)
-old_rf_AUC_imbalanced <- WeightedAUC(old_tpr.fpr.imbalanced)
-
-cat("AUC(imbalanced) for Random Forest with old feature: ", old_rf_AUC_imbalanced,".\n")
-cat("Accuracy(imbalanced) for Random Forest with old feature", old_rf_accuracy_imbalanced*100,"%.\n")
-cat("Training time (imbalanced) for Random Forest with old feature: ", old_time.rf.train.final.imbalanced[1], "s.\n")
-cat("Testing time (imbalanced) for Random Forest with old feature: ", old_time.rf.test.final.imbalanced[1], "s.\n")
-}
+  # Evaluate Model
+  old_rf_dat_test <- old_dat_test
+  old_rf_dat_test$label <- as.numeric(old_rf_dat_test$label)
+  if(test.rf.old.feature){
+  old_time.rf.test.final.balanced <- system.time(
+    rf_predicted_balanced <- as.numeric(as.vector(old_random_forest_test(old_random_forest_fit_final_balanced, old_rf_dat_test))))
+  old_rf_accuracy_balanced <- mean(round(rf_predicted_balanced == old_rf_dat_test$label))
+  old_tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),old_rf_dat_test$label)
+  old_rf_AUC_balanced <- WeightedAUC(old_tpr.fpr.balanced)
+  
+  cat("AUC(balanced) for Random Forest with old feature: ", old_rf_AUC_balanced,".\n")
+  cat("Accuracy(balanced) for Random Forest with old feature", old_rf_accuracy_balanced*100,"%.\n")
+  cat("Training time (balanced) for Random Forest with old feature: ", old_time.rf.train.final.balanced[1], "s.\n")
+  cat("Testing time (balanced) for Random Forest with old feature: ", old_time.rf.test.final.balanced[1], "s.\n")
+  cat("   ","\n")
+  }
 }
 ```
 
-* Generate a csv on presentation day
+# Generate a csv on presentation day
 
 ```{r generate csv}
 if (run.presentation.day){
@@ -890,14 +886,6 @@ if (run.presentation.day){
   csvdata <- data.frame(Index, Baseline, Advanced)
 
   write.csv(csvdata,csvfileoutput, row.names=FALSE,quote = FALSE)
-
-
-  # presentation_day_gbm_accu <- mean(info$label == label_pred_baseline)
-  # cat("The accuracy of GBM baseline model is", presentation_day_gbm_accu*100, "%.\n")
-  # 
-  # presentation_day_advanced_accu <- mean(info$label == rf_predicted_balanced)
-  # cat("The accuracy of Advanced model is", presentation_day_advanced_accu*100, "%.\n")
-
 }
 ```
 
