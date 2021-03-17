@@ -395,8 +395,8 @@ if(run.rf){
     # Train RF by balanced data
     time.rf.train.final.balanced <- system.time(
       random_forest_fit_final_balanced <- random_forest_train(dat_train_balanced_SMOTE,
-                                                              mtry = 308, tree_number = 500,
-                                                              node_size = 10))
+                                                              mtry = 308, tree_number = 1000,
+                                                              node_size = 30))
     save(random_forest_fit_final_balanced, file = "../output/rf_train_final_balanced.RData")
     save(time.rf.train.final.balanced, file = "../output/rf_train_final_time_balanced.RData")
     # Train RF by imbalanced data
@@ -409,8 +409,6 @@ if(run.rf){
   }else{
     load("../output/rf_train_final_balanced.RData")
     load("../output/rf_train_final_time_balanced.RData")
-    load("../output/rf_train_final_time_imbalanced.RData")
-    load("../output/rf_train_final_imbalanced.RData")
   }
   # Evaluation:
   if(test.rf){
@@ -829,27 +827,16 @@ if(run.rf.old.feature){
     # Balanced
     old_time.rf.train.final.balanced <- system.time(
       old_random_forest_fit_final_balanced <- old_random_forest_train(old_dat_train_balanced_SMOTE,
-                                                                      mtry = 308, tree_number = 500,
-                                                                      node_size = 10))
+                                                                      mtry = 308, tree_number = 1000,
+                                                                      node_size = 30))
     save(old_random_forest_fit_final_balanced,
          file = "../output/rf_train_final_balanced_old_feature.RData")
     save(old_time.rf.train.final.balanced,
          file = "../output/rf_train_final_time_balanced_old_feature.RData")
-    # Imbalanced
-    old_time.rf.train.final.imbalanced <- system.time(
-      old_random_forest_fit_final_imbalanced <- old_random_forest_train(old_dat_train,
-                                                                        mtry = 308,
-                                                                        tree_number = 1500,
-                                                                        node_size = 30))
-    save(old_time.rf.train.final.imbalanced,
-         file = "../output/rf_train_final_time_imbalanced_old_feature.RData")
-    save(old_random_forest_fit_final_imbalanced,
-         file = "../output/rf_train_final_imbalanced_old_feature.RData")
+   
   }else{
     load("../output/rf_train_final_balanced_old_feature.RData")
     load("../output/rf_train_final_time_balanced_old_feature.RData")
-    load("../output/rf_train_final_time_imbalanced_old_feature.RData")
-    load("../output/rf_train_final_imbalanced_old_feature.RData")
   }
 
 
@@ -857,17 +844,17 @@ if(run.rf.old.feature){
   old_rf_dat_test <- old_dat_test
   old_rf_dat_test$label <- as.numeric(old_rf_dat_test$label)
   if(test.rf.old.feature){
-  old_time.rf.test.final.balanced <- system.time(
-    rf_predicted_balanced <- as.numeric(as.vector(old_random_forest_test(old_random_forest_fit_final_balanced, old_rf_dat_test))))
-  old_rf_accuracy_balanced <- mean(round(rf_predicted_balanced == old_rf_dat_test$label))
-  old_tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),old_rf_dat_test$label)
-  old_rf_AUC_balanced <- WeightedAUC(old_tpr.fpr.balanced)
+    old_time.rf.test.final.balanced <- system.time(
+      rf_predicted_balanced <- as.numeric(as.vector(old_random_forest_test(old_random_forest_fit_final_balanced, old_rf_dat_test))))
+    old_rf_accuracy_balanced <- mean(round(rf_predicted_balanced == old_rf_dat_test$label))
+    old_tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),old_rf_dat_test$label)
+    old_rf_AUC_balanced <- WeightedAUC(old_tpr.fpr.balanced)
 
-  cat("AUC(balanced) for Random Forest with old feature: ", old_rf_AUC_balanced,".\n")
-  cat("Accuracy(balanced) for Random Forest with old feature", old_rf_accuracy_balanced*100,"%.\n")
-  cat("Training time (balanced) for Random Forest with old feature: ", old_time.rf.train.final.balanced[1], "s.\n")
-  cat("Testing time (balanced) for Random Forest with old feature: ", old_time.rf.test.final.balanced[1], "s.\n")
-  cat("   ","\n")
+    cat("AUC(balanced) for Random Forest with old feature: ", old_rf_AUC_balanced,".\n")
+    cat("Accuracy(balanced) for Random Forest with old feature", old_rf_accuracy_balanced*100,"%.\n")
+    cat("Training time (balanced) for Random Forest with old feature: ", old_time.rf.train.final.balanced[1], "s.\n")
+    cat("Testing time (balanced) for Random Forest with old feature: ", old_time.rf.test.final.balanced[1], "s.\n")
+    cat("   ","\n")
   }
 }
 ```
