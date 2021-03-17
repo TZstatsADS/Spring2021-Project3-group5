@@ -4,7 +4,7 @@ author: "Jingbin Cao, jc5514"
 date: "3/16/2021"
 output: pdf_document
 ---
-In this file, I tuned the random forest model under the new feature for both imbalanced and balanced training data set. Also I used both ROSE and SMOTE to balance the training data. From the figures above, we can find that when trees = 500 and nodes = 10, the random forest model for balanced data is the best because it has highest AUC and testing accuracy. When **trees = 1500** and **nodes = 30**, the random forest model for imbalanced data is the best for the same reason. We can also find that when tree and node numbers become larger, the accuracy and the AUC might become lower due to the overfitting issue. Therefore, the number that I chose for the random forest model is in the middle of all the possible options.  
+In this file, I tuned the random forest model under the new feature for both imbalanced and balanced training data set. Also I used both ROSE and SMOTE to balance the training data. From the figures above, we can find that when trees = 1000 and nodes = 30, the random forest model for balanced data is the best because it has highest AUC and testing accuracy. When **trees = 1500** and **nodes = 30**, the random forest model for imbalanced data is the best for the same reason. We can also find that when tree and node numbers become larger, the accuracy and the AUC might become lower due to the overfitting issue. Therefore, the number that I chose for the random forest model is in the middle of all the possible options.  
 If we use SMOTE to balance the data: ntree = 1000, node = 30, mtry = 154 is the best.
 
 Please feel free to set run.ROSE.balance <- TRUE to see the result of using ROSE balanced method, set run.SMOTE.balance <- TRUE to see the result of using SMOTE balanced method, set tune.random.forest <- TRUE to tune the model by yourself, and set test.tune.rf.models <- TRUE to test the tuning result of Random Forest Models.  
@@ -195,9 +195,10 @@ dat_test$label <- as.numeric(dat_test$label)
 ```
 
 # If use SMOTE to balance the data
-ntree = 500, node = 10, mtry = 308 is the best.
+ntree = 1000, node = 30, mtry = 308 is the best.
 ```{r}
-source("../lib/random_forest.R")
+source("../lib/train.R")
+source("../lib/test.R")
 if(run.SMOTE.balance){
 dat_test$label <- as.numeric(dat_test$label)
 
@@ -368,9 +369,10 @@ cat("AUC(balanced) 30", rf_AUC_balanced,".\n")
 # If use rose to balance the data
 
 ```{r}
-source("../lib/random_forest.R")
 
 if(run.ROSE.balance){
+  source("../output/train.R")
+  sourcce("../output/test.R")
 dat_test <- dat_test
 
 if(tune.random.forest){
@@ -622,7 +624,8 @@ cat("AUC(balanced) 30", rf_AUC_balanced,".\n")
 # Tune model from imbalanced data
 ```{r}
 if(run.imbalanced.rf){
-source("../lib/random_forest.R")
+source("../lib/train.R")
+source("../lib/test.R")
 if(tune.random.forest){
   time.rf.tune <- system.time(rf.tune <- random_forest_tune(dat_train))
   save(rf.tune, file="../output/rf_tune_imbalanced.RData")
@@ -861,7 +864,7 @@ cat("Accuracy(imbalanced) 30", rf_accuracy_imbalanced*100,"%.\n")
 cat("AUC(imbalanced) 30", rf_AUC_imbalanced,".\n")
 #cat("Accuracy(imbalanced) 30", rf_accuracy_imbalanced*100,"%.\n")
 #cat("AUC(imbalanced) 30",rf_AUC_imbalanced,".\n")
-}
+ }
 }
 ```
 

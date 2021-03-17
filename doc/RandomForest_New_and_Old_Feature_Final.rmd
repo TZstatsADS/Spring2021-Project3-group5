@@ -204,7 +204,8 @@ dat_test_balanced_rose <- ROSE(label~., dat_test, seed=2020)$data
 
 ## Training RF
 
-source("../lib/random_forest.R")
+source("../lib/train")
+source("../lib/test")
 if(train.rf){
   # Train RF by balanced data
   time.rf.train.final.balanced <- system.time(random_forest_fit_final_balanced <- random_forest_train(dat_train_balanced_rose, mtry = 308, tree_number = 500, node_size = 10))
@@ -254,7 +255,8 @@ In random forests, there is no need for cross-validation or a separate test set 
 The sixth advanced model is random forest. Here we use the datasets that are extracted by old feature functions. We used two models trained by both imbalanced and balanced dataset. We used ROSE function to balance bothh training and testing data. For tuning the model, we set mtry = 308, tree number = 500, and node size = 10 for the RF model using balanced data, and we set mtry = 308, tree number = 1500, and node size = 30 for the RF model using imbalanced data. The evaluation of the model is shown at the end of this section, and we will compare this model with the RF model trained by new features.
 ```{r}
 if(run.rf.old.feature){
-source("../lib/random_forest_old_feature.R")
+source("../lib/train.R")
+source("../lib/test.R")
 old_feature <- function(input_list = fiducial_pt_list, index){
   old_pairwise_dist <- function(vec){
     return(as.vector(dist(vec)))
