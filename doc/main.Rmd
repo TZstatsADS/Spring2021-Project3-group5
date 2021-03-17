@@ -8,7 +8,7 @@ output:
     df_print: paged
 ---
 
-```{r message=FALSE}
+```{r message=FALSE, echo=FALSE}
 #Test Branch created
 if(!require("R.matlab")){
   install.packages("R.matlab")
@@ -76,7 +76,9 @@ if(!require("pROC")){
 if(!require("DMwR")){
   install.packages("DMwR")
 }
-
+if(!require("MASS")){
+  install.packages("MASS")
+}
 library(R.matlab)
 library(readxl)
 library(dplyr)
@@ -98,6 +100,7 @@ library(tidyverse)
 library(caTools)
 library(prediction)
 library(pROC)
+library(MASS)
 ```
 
 
@@ -170,20 +173,17 @@ run.add.poly.feature <- TRUE # and poly features to features matrix
 
 # svm
 run.svm <- FALSE # svm is the chosen advanced model
-model.selection <- TRUE # perform model selection on svm models
+model.selection <- FALSE # perform model selection on svm models
 run.svm.test <- TRUE # evaluate performance on the test set
 
-# random forest
-run.rf <- FALSE # random forest is the chosen advanced model
-
 # Random Forest Model with new feature
-run.rf <- FALSE
-train.rf <- FALSE # Train Random Forest Model
+run.rf <- TRUE
+train.rf <- TRUE # Train Random Forest Model
 test.rf <- TRUE # Test Random Forest Model
 
 # Random Forest Model with old feature
-run.rf.old.feature <- TRUE
-train.rf.old.feature <- TRUE
+run.rf.old.feature <- FALSE
+train.rf.old.feature <- FALSE
 test.rf.old.feature <- TRUE
 
 # ridge
@@ -226,9 +226,10 @@ if (run.presentation.day){
   run.gbm.train <- FALSE
   run.feature.train <- FALSE
   run.gbm.test <- TRUE
-  run.svm <- TRUE
-  model.selection <- FALSE
-  run.svm.test <- TRUE
+
+  run.rf <- TRUE
+  train.rf <- FALSE
+  test.rf <- TRUE
 }
 
 #load fiducial points
@@ -386,15 +387,14 @@ if(run.rf){
 #balanced data
 # dat_train_balanced_rose<-ROSE(label~., dat_train,seed=2020)$data (ROSE balancing method is suck in this case)
 # dat_test_balanced_rose <- ROSE(label~., dat_test, seed=2020)$data
-rf_dat_train <- dat_train
-rf_dat_test <- dat_test
-rf_dat_train$label <- as.factor(rf_dat_train$label)
-rf_dat_test$label <- as.numeric(rf_dat_test$label)
-dat_train_balanced_SMOTE <- SMOTE(label ~ ., rf_dat_train, perc.over = 100, perc.under=200)
+
 
 ## Training RF
 source("../lib/random_forest.R")
 if(train.rf){
+  rf_dat_train <- dat_train
+  rf_dat_train$label <- as.factor(rf_dat_train$label)
+  dat_train_balanced_SMOTE <- SMOTE(label ~ ., rf_dat_train, perc.over = 100, perc.under=200)
   # Train RF by balanced data
   time.rf.train.final.balanced <- system.time(random_forest_fit_final_balanced <- random_forest_train(dat_train_balanced_SMOTE, mtry = 154, tree_number = 1000, node_size = 20))
   save(random_forest_fit_final_balanced, file = "../output/rf_train_final_balanced.RData")
@@ -412,6 +412,9 @@ if(train.rf){
 # Evaluation:
 # Balanced:
 if(test.rf){
+rf_dat_test <- dat_test
+rf_dat_test$label <- as.numeric(rf_dat_test$label)
+
 time.rf.test.final.balanced <- system.time(rf_predicted_balanced <- as.numeric(as.vector(random_forest_test(random_forest_fit_final_balanced, rf_dat_test))))
 rf_accuracy_balanced <- mean(round(rf_predicted_balanced == rf_dat_test$label))
 tpr.fpr.balanced <- WeightedROC(as.numeric(rf_predicted_balanced),rf_dat_test$label)
@@ -468,7 +471,7 @@ Tuning hyperparameters for both linear and radial basis kernel and select the ke
 
 ```{r}
 if(run.svm){
-  set.seed(2021)
+  set.seed(2020)
   tm_svm_linear_mod <- NA
   tm_svm_radial_mod <- NA
   if(model.selection){
@@ -743,18 +746,18 @@ if(run.pca_lda){
 ```{r}
 if(run.pca_lda){
   test.model.start = proc.time()
-  pred_train_lda <- predict(lda_pca_10, train_pca_10[-dim(train_pca_10)[2]])
-  accu_train_lda <- mean(pred_train_lda$class == train_pca_10$label)
+  pred_train_lda <- predict(lda_pca_500, train_pca_500[-dim(train_pca_500)[2]])
+  accu_train_lda <- mean(pred_train_lda$class == train_pca_500$label)
   cat("The trainig accuracy of model: LDA", "is", accu_train_lda*100, "%.\n")
   #calculating the test time
   if(run.test){
-    pred_test_lda <- predict(lda_pca_10, test_pca_10)
+    pred_test_lda <- predict(lda_pca_500, test_pca_500)
   }
   test.model.end = proc.time()
   save(pred_test_lda, file="../output/fit_train.RData")
-  accu_test_lda <- mean(pred_test_lda$class == test_pca_10$label)
+  accu_test_lda <- mean(pred_test_lda$class == test_pca_500$label)
   cat("The accuracy of model: LDA", "is", accu_test_lda*100, "%.\n")
-  tpr.fpr <- WeightedROC(as.numeric(pred_test_lda$class), test_pca_10$label)
+  tpr.fpr <- WeightedROC(as.numeric(pred_test_lda$class), test_pca_500$label)
   lda_auc = WeightedAUC(tpr.fpr)
   cat("The AUC of model: LDA is", lda_auc, ".\n")
 }
@@ -778,7 +781,7 @@ if(run.pca_lda){
 --------THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL. THIS IS TO SEPARATE EACH MODEL.----------
 
 #  Advanced Model 6: Random Forest (RF) Model with old feature:  
-The sixth advanced model is random forest. Here we use the datasets that are extracted by old feature functions. We used two models trained by both imbalanced and balanced dataset. We used ROSE function to balance bothh training and testing data. For tuning the model, we set mtry = 308, tree number = 500, and node size = 10 for the RF model using balanced data, and we set mtry = 308, tree number = 1500, and node size = 30 for the RF model using imbalanced data. The evaluation of the model is shown at the end of this section, and we will compare this model with the RF model trained by new features.
+The sixth advanced model is random forest. Here we use the datasets that are extracted by old feature functions. We used two models trained by both imbalanced and balanced dataset. We used ROSE function to balance both training and testing data. For tuning the model, we set mtry = 308, tree number = 500, and node size = 10 for the RF model using balanced data, and we set mtry = 308, tree number = 1500, and node size = 30 for the RF model using imbalanced data. The evaluation of the model is shown at the end of this section, and we will compare this model with the RF model trained by new features.
 ```{r}
 if(run.rf.old.feature){
 source("../lib/random_forest_old_feature.R")
@@ -879,7 +882,7 @@ cat("Testing time (imbalanced) for Random Forest with old feature: ", old_time.r
 ```{r generate csv}
 if (run.presentation.day){
   csvfileoutput<-"../output/label_prediction.csv"
-  Advanced<-svm_rbf_pred
+  Advanced<-rf_predicted_balanced
   Baseline<-label_pred_baseline
   Index<-test_idx
   csvdata <- data.frame(Index, Baseline, Advanced)
@@ -887,11 +890,11 @@ if (run.presentation.day){
   write.csv(csvdata,csvfileoutput, row.names=FALSE,quote = FALSE)
 
 
-  presentation_day_gbm_accu <- mean(info$label == label_pred_baseline)
-  cat("The accuracy of GBM baseline model is", presentation_day_gbm_accu*100, "%.\n")
-
-  presentation_day_advanced_accu <- mean(info$label == svm_rbf_pred)
-  cat("The accuracy of Advanced model is", presentation_day_advanced_accu*100, "%.\n")
+  # presentation_day_gbm_accu <- mean(info$label == label_pred_baseline)
+  # cat("The accuracy of GBM baseline model is", presentation_day_gbm_accu*100, "%.\n")
+  # 
+  # presentation_day_advanced_accu <- mean(info$label == rf_predicted_balanced)
+  # cat("The accuracy of Advanced model is", presentation_day_advanced_accu*100, "%.\n")
 
 }
 ```
