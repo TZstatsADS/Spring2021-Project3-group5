@@ -377,7 +377,7 @@ if (run.gbm.test){
 
 # Advanced Model 2: Random Forest
 
-The second advanced model is random forest. Here we use the datasets that are extracted by new feature functions. We used two models trained by both imbalanced and balanced dataset. We used SMOTE function to balance both training and testing data. For tuning the model, we set mtry = 308, tree number = 500, and node size = 10 for the RF model using balanced data, and we set mtry = 308, tree number = 1500, and node size = 30 for the RF model using imbalanced data. The evaluation of the model is shown at the end of this section.  
+The second advanced model is random forest. Here we use the datasets that are extracted by new feature functions. We used two models trained by both imbalanced and balanced dataset. We used SMOTE function to balance both training and testing data. For tuning the model, we set mtry = 308, tree number = 500, and node size = 10 for the RF model using balanced data (SMOTE), and we set mtry = 308, tree number = 1500, and node size = 30 for the RF model using imbalanced data. The evaluation of the model is shown at the end of this section.  
 
 The tuning part is in a separate file named "appendix_tune_rf.rmd" in doc folder. Please feel free to check that to see the tuning process.  
 
@@ -394,9 +394,9 @@ source("../lib/random_forest.R")
 if(train.rf){
   rf_dat_train <- dat_train
   rf_dat_train$label <- as.factor(rf_dat_train$label)
-  dat_train_balanced_SMOTE <- SMOTE(label ~ ., rf_dat_train, perc.over = 100, perc.under=200)
+  dat_train_balanced_SMOTE <- SMOTE(label ~ ., rf_dat_train, perc.over = 120, perc.under=200)
   # Train RF by balanced data
-  time.rf.train.final.balanced <- system.time(random_forest_fit_final_balanced <- random_forest_train(dat_train_balanced_SMOTE, mtry = 154, tree_number = 1000, node_size = 20))
+  time.rf.train.final.balanced <- system.time(random_forest_fit_final_balanced <- random_forest_train(dat_train_balanced_SMOTE, mtry = 308, tree_number = 500, node_size = 10))
   save(random_forest_fit_final_balanced, file = "../output/rf_train_final_balanced.RData")
   save(time.rf.train.final.balanced, file = "../output/rf_train_final_time_balanced.RData")
   # Train RF by imbalanced data
@@ -851,6 +851,8 @@ if(train.rf.old.feature){
 
 # Evaluate Model
 # Balanced:
+old_rf_dat_test <- old_dat_test
+old_rf_dat_test$label <- as.numeric(old_rf_dat_test$label)
 if(test.rf.old.feature){
 old_time.rf.test.final.balanced <- system.time(rf_predicted_balanced <- as.numeric(as.vector(old_random_forest_test(old_random_forest_fit_final_balanced, old_rf_dat_test))))
 old_rf_accuracy_balanced <- mean(round(rf_predicted_balanced == old_rf_dat_test$label))
