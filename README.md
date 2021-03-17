@@ -20,9 +20,13 @@ Term: Spring 2021
 All team members attended all weekly project meetings.
 
 Jingbin Cao: Built Random Forest Model （with， ROSE balanced, SMOTE balanced method, and imbalanced for training data). Also built RF model with old features. Tuned the hyperparamters for all Random Forest Model.
+
 Chuanchuan Liu: Worked on Ridge model, balanced data and fine-tuned the parameter.
+
 Dennis Shpits (Presenter): Worked on the GBM Baseline model, built new feature function, and made presentation slides.
+
 Yingyao Wu: Worked on SVM model using both linear and radial basis kernel methods; organized and cleaned up the main file.
+
 Zikun Zhuang: Balanced the data, worked with PCA and LDA model, and tunning the hyper-parameter。
 
 
