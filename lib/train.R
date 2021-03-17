@@ -96,13 +96,17 @@ svm_linear_train = function(training_data, linear_cost, cv){
 }
 
 svm_radial_cost_tune <- function(training_data){
-  best_cost <- tune(method = svm,
-                    train.x = as.matrix(training_data[,-ncol(training_data)]),
-                    train.y = factor(training_data$label),
+  cost.tune = c(1/nrow(training_data), 1)
+  best_cost = rep(NA,3)
+  for(i in 1:length(cost.tune))
+    curr.mod = svm(label ~ ., data = training_data,
                     kernel = "radial",
-                    ranges = list(gamma = seq(0.001, 0.1, 0.02), cost = seq(0.01, 0.1, 0.02)
-                    ))
-  return(best_cost)
+                    cost = cost.tune,
+                    cross = K,
+                    type = "C-classification")
+    curr.pred = svm_test(curr.mod, training_data, FALSE)
+    best_cost[i] = mean(round(curr.pred == training_data$label))
+  return(cost.tune[which.max(best_cost)])
 }
 
 svm_radial_train <- function(training_data, radial_cost, cv){
@@ -147,8 +151,8 @@ ridge_train <- function(train_data, alpha, K, lambda){
   ### Input: a data frame containing features and labels and a parameter list.
   ### Output:a trained model
   
-  feature_train = as.matrix(dat_train_rebalanced[, -dim(dat_train_rebalanced)[2]])
-  label_train = as.integer(dat_train_rebalanced$label) 
+  feature_train = as.matrix(train_data[, -dim(train_data)[2]])
+  label_train = as.integer(train_data$label) 
   
   library(glmnet)
   ridge_model <- cv.glmnet(x=feature_train, y=label_train, alpha=alpha, nfolds=K, lambda=lambda)

@@ -28,8 +28,8 @@ random_forest_test <- function(model, testset){
 
 
 ## SVM
-svm_test = function(svm_model, testing_data, model_selection=FALSE){
-  if(model_selection) {
+svm_test = function(svm_model, testing_data, presentation.day=TRUE){
+  if(!presentation.day) {
     pred_svm = predict(object = svm_model, newdata = testing_data[-ncol(testing_data)])
   } else {
     pred_svm = predict(object = svm_model, newdata = testing_data)
