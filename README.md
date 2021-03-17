@@ -30,6 +30,9 @@ Yingyao Wu: Worked on SVM model using both linear and radial basis kernel method
 Zikun Zhuang: Balanced the data, worked with PCA and LDA model, and tunning the hyper-parameter。
 
 
+**Model Selection**: Here is the three figures showing Accuracy, AUC, Training Time, and Testing Time for all models.
+![Model AUC and Accuracies](http://url/to/img.png)
+
 Following [suggestions](http://nicercode.github.io/blog/2013-04-05-projects/) by [RICH FITZJOHN](http://nicercode.github.io/about/#Team) (@richfitz). This folder is orgarnized as follows.
 
 ```
