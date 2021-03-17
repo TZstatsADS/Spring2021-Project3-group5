@@ -170,7 +170,7 @@ run.test <- TRUE # run evaluation on an independent test set
 run.feature.test <- TRUE # process features for test set
 
 # gbm
-run.gbm.train <- FALSE # gbm(imroved) is the chosen advanced model
+run.gbm.train <- TRUE # gbm(imroved) is the chosen advanced model
 run.gbm.test <- TRUE # gbm(imroved) is the chosen advanced model
 gbm.numtrees <- 1000 #number of trees to use in gbm
 
@@ -179,7 +179,7 @@ run.poly.feature <- TRUE # process poly features
 run.add.poly.feature <- TRUE # and poly features to features matrix
 
 # svm
-run.svm <- TRUE # svm is the chosen advanced model
+run.svm <- FALSE # svm is the chosen advanced model
 run.svm.train <- FALSE # train svm model
 model.selection <- FALSE # perform model selection on svm models
 run.svm.test <- TRUE # evaluate performance on the test set
@@ -190,18 +190,18 @@ train.rf <- FALSE # Train Random Forest Model
 test.rf <- TRUE # Test Random Forest Model
 
 # Random Forest Model with old feature
-run.rf.old.feature <- TRUE # run random forest using old features
+run.rf.old.feature <- FALSE # run random forest using old features
 train.rf.old.feature <- FALSE # train random forest with old features
 test.rf.old.feature <- TRUE # evaluate performance on test set
 
 # ridge
-run.ridge <- TRUE # ridge is the chosen advanced model
+run.ridge <- FALSE # ridge is the chosen advanced model
 alpha <- 0 # ridge regression alpha
 lambda <- 10^seq(10, -2, length = 100) # lambda
 train.ridge <- FALSE # train ridge model
 
 # PCA + LDA
-run.pca_lda <- TRUE # PCA + LDA is the chosen adcanced model
+run.pca_lda <- FALSE # PCA + LDA is the chosen adcanced model
 run.select_PC <- FALSE #run different PCs
 run.lda.train <- FALSE # run lda on the training set
 run.pca_lad.test <- TRUE # evaluate performance on the test set
