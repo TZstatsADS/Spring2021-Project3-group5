@@ -972,7 +972,7 @@ if(run.pca_lda){
 
 **Since there are over 6000 features, we implement the PCA method to reduce dimension according to the covariance matrix. We only retain PCs with large variance.**
   
-  ```{r pca lda}
+```{r pca lda}
 if(run.pca_lda){
   balanced_test_data <- dat_test
   if(run.select_PC){
