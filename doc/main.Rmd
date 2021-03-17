@@ -396,7 +396,7 @@ dat_train_balanced_SMOTE <- SMOTE(label ~ ., rf_dat_train, perc.over = 100, perc
 source("../lib/random_forest.R")
 if(train.rf){
   # Train RF by balanced data
-  time.rf.train.final.balanced <- system.time(random_forest_fit_final_balanced <- random_forest_train(dat_train_balanced_SMOTE, mtry = 308, tree_number = 500, node_size = 10))
+  time.rf.train.final.balanced <- system.time(random_forest_fit_final_balanced <- random_forest_train(dat_train_balanced_SMOTE, mtry = 154, tree_number = 1000, node_size = 20))
   save(random_forest_fit_final_balanced, file = "../output/rf_train_final_balanced.RData")
   save(time.rf.train.final.balanced, file = "../output/rf_train_final_time_balanced.RData")
   # Train RF by imbalanced data
@@ -836,12 +836,13 @@ old_dat_test$label <- as.numeric(old_dat_test$label)
 # Balance data
 # dat_train_balanced_rose<-ROSE(label~., dat_train,seed=2020)$data (ROSE balancing method is suck in this case)
 # dat_test_balanced_rose <- ROSE(label~., dat_test, seed=2020)$data
-old_rf_dat_train <- old_dat_train
-old_rf_dat_test <- old_dat_test
-old_rf_dat_train$label <- as.factor(old_rf_dat_train$label)
-old_rf_dat_test$label <- as.numeric(old_rf_dat_test$label)
-old_dat_train_balanced_SMOTE <- SMOTE(label ~ ., old_rf_dat_train, perc.over = 100, perc.under=200)
-
+# old_rf_dat_train <- old_dat_train
+# old_rf_dat_test <- old_dat_test
+# old_rf_dat_train$label <- as.factor(old_rf_dat_train$label)
+# old_rf_dat_test$label <- as.numeric(old_rf_dat_test$label)
+gbm_dat_train$label <- as.factor(gbm_dat_train$label)
+dat_train_balanced_gbm <- SMOTE(label ~ ., gbm_dat_train, perc.over = 100, perc.under=200)
+old_dat_train_balanced_SMOTE <- dat_train_balanced_gbm
 
 # Train Model
 if(train.rf.old.feature){
