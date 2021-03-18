@@ -186,7 +186,7 @@ run.svm.test <- TRUE # evaluate performance on the test set
 
 # Random Forest Model with new feature
 run.rf <- TRUE
-train.rf <- TRUE # Train Random Forest Model
+train.rf <- FALSE # Train Random Forest Model
 test.rf <- TRUE # Test Random Forest Model
 
 # Random Forest Model with old feature
@@ -204,7 +204,7 @@ train.ridge <- FALSE # train ridge model
 run.pca_lda <- FALSE # PCA + LDA is the chosen adcanced model
 run.select_PC <- FALSE #run different PCs
 run.lda.train <- FALSE # run lda on the training set
-run.pca_lad.test <- TRUE # evaluate performance on the test set
+run.pca_lda.test <- TRUE # evaluate performance on the test set
 ```
 
 Using cross-validation or independent test set evaluation, we compare the performance of models with different specifications.
@@ -321,7 +321,7 @@ source("../lib/test.R")
 
 * Model Training
 
-```{r}
+```{r gbm, warning=FALSE}
 if (run.gbm.train){
   if (sample.reweight){
 
@@ -526,12 +526,11 @@ if(run.svm){
     if(run.presentation.day){
       tm_svm_radial_mod < system.time(svm_radial_mod <- svm_radial_train(svm_training_data,
                                                                          1, K))
-    } else {
-      load(file="../output/svm_radial_mod.RData")
+    } 
+  } 
+} else {
       load(file="../output/svm_model_selection.RData")
       svm_res
-    }
-  }
 }
 ```
 
@@ -769,7 +768,7 @@ if(run.pca_lda){
   accu_train_lda <- mean(pred_train_lda$class == train_pca_500$label)
   cat("The trainig accuracy of model: LDA", "is", accu_train_lda*100, "%.\n")
   #calculating the test time
-  if(run.test){
+  if(run.pca_lda.test){
     pred_test_lda <- predict(lda_pca_500, test_pca_500)
   }
   test.model.end = proc.time()
@@ -898,6 +897,10 @@ if (run.presentation.day){
   write.csv(csvdata,csvfileoutput, row.names=FALSE,quote = FALSE)
 }
 ```
+
+# Summary
+
+Based on our results, we have selected Random Forest (trained with new features) to be our advanced model since it has better performance than the baseline GBM model and all other four alternative models.
 
 ### Reference
 - Du, S., Tao, Y., & Martinez, A. M. (2014). Compound facial expressions of emotion. Proceedings of the National Academy of Sciences, 111(15), E1454-E1462.
